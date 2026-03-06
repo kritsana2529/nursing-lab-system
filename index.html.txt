@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบยืม-คืนอุปกรณ์ ห้องแล็ปพยาบาลศาสตร์</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .hidden-section { display: none; }
+    </style>
+</head>
+<body class="bg-blue-50 text-gray-800 font-sans min-h-screen">
+
+    <div id="loginSection" class="flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border-t-4 border-blue-600">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-blue-700">ระบบห้องแล็ป</h1>
+                <p class="text-sm text-gray-500 mt-1">คณะพยาบาลศาสตร์ วิทยาลัยเซนต์หลุยส์</p>
+            </div>
+            <form id="loginForm" onsubmit="event.preventDefault(); login();" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">รหัสเจ้าหน้าที่ (Username)</label>
+                    <input type="text" id="username" class="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">รหัสผ่าน (Password)</label>
+                    <input type="password" id="password" class="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium transition">
+                    เข้าสู่ระบบ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="mainSection" class="hidden-section max-w-5xl mx-auto mt-10 p-4">
+        
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">ระบบยืม-คืนอุปกรณ์</h2>
+                <p class="text-sm text-gray-600">ผู้ใช้งาน: <span id="displayStaffName" class="font-semibold text-blue-600"></span></p>
+            </div>
+            <button onclick="logout()" class="text-red-500 hover:text-red-700 text-sm font-medium">ออกจากระบบ</button>
+        </div>
+
+        <div class="flex space-x-2 mb-6">
+            <button onclick="showTab('borrowTab')" id="btn-borrowTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📤 โหมดยืมอุปกรณ์</button>
+            <button onclick="showTab('returnTab')" id="btn-returnTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📥 โหมดคืนอุปกรณ์</button>
+        </div>
+
+        <div id="borrowTab" class="bg-white p-6 rounded-xl shadow-md tab-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📤 ทำรายการยืม</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">1. รหัสนักศึกษา (ผู้ยืม)</label>
+                    <input type="text" id="borrowStudentId" placeholder="สแกนหรือพิมพ์รหัสนักศึกษา" class="mt-1 w-full px-4 py-3 border border-blue-300 rounded-md bg-blue-50 focus:bg-white focus:ring-2 focus:ring-blue-500" autofocus>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">2. รหัสบาร์โค้ดอุปกรณ์</label>
+                    <input type="text" id="borrowEquipId" placeholder="สแกนบาร์โค้ดอุปกรณ์ที่นี่..." class="mt-1 w-full px-4 py-3 border border-green-300 rounded-md bg-green-50 focus:bg-white focus:ring-2 focus:ring-green-500">
+                    <p class="text-xs text-gray-500 mt-2">* เมื่อใช้เครื่องสแกน ระบบจะทำการบันทึกอัตโนมัติ</p>
+                </div>
+            </div>
+            <button onclick="processBorrow()" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold text-lg shadow-lg">
+                ยืนยันการยืมอุปกรณ์
+            </button>
+        </div>
+
+        <div id="returnTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📥 ทำรายการคืน</h3>
+            <div class="max-w-md mx-auto text-center">
+                <label class="block text-sm font-medium text-gray-700 text-left mb-2">สแกนรหัสบาร์โค้ดอุปกรณ์ที่นำมาคืน</label>
+                <input type="text" id="returnEquipId" placeholder="สแกนบาร์โค้ดที่นี่..." class="w-full px-4 py-4 border-2 border-green-400 rounded-lg text-center text-lg focus:ring-4 focus:ring-green-200 focus:outline-none">
+                <button onclick="processReturn()" class="mt-4 w-full bg-green-500 text-white py-3 rounded-md hover:bg-green-600 font-bold text-lg shadow-lg">
+                    ยืนยันการคืนอุปกรณ์
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 🌟 สำคัญ: นำ Web App URL ที่ได้จาก Google Apps Script มาใส่ตรงนี้
+        const GAS_WEB_APP_URL = https://script.google.com/a/macros/slc.ac.th/s/AKfycbwglBnuaNSz_eDmijMps1TfgX9I3GeXGw4SHyJnQ6T63r3wAnQOaGxxd0jG_Fl-hA/exec; 
+        
+        let currentStaffId = "";
+
+        // ----- ฟังก์ชันสลับหน้าจอ (Tabs) -----
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section'));
+            document.getElementById(tabId).classList.remove('hidden-section');
+            
+            // เปลี่ยนสีปุ่มเมนู
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-white', 'text-gray-600');
+            });
+            let activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('bg-white', 'text-gray-600');
+            activeBtn.classList.add('bg-blue-600', 'text-white');
+
+            // โฟกัสช่องสแกนบาร์โค้ดอัตโนมัติ
+            if(tabId === 'borrowTab') document.getElementById('borrowStudentId').focus();
+            if(tabId === 'returnTab') document.getElementById('returnEquipId').focus();
+        }
+
+        // ----- ฟังก์ชัน Login -----
+        async function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            
+            btn.innerText = "กำลังเข้าสู่ระบบ...";
+            btn.disabled = true;
+
+            try {
+                // ยิง API ไปที่ Google Sheets
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "login", username: user, password: pass })
+                });
+                const result = await response.json();
+
+                if(result.success) {
+                    currentStaffId = user;
+                    document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
+                    
+                    // ซ่อนหน้า Login แสดงหน้า Main
+                    document.getElementById('loginSection').classList.add('hidden-section');
+                    document.getElementById('mainSection').classList.remove('hidden-section');
+                    showTab('borrowTab');
+                } else {
+                    Swal.fire('เกิดข้อผิดพลาด', result.message, 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                // ข้ามการเชื่อมต่อจริงไว้ใช้ทดสอบ UI ก่อนนำ URL มาใส่
+                if(GAS_WEB_APP_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE") {
+                    Swal.fire('โหมดทดสอบ UI', 'กรุณาใส่ Web App URL ของ Google Apps Script ในโค้ดก่อนครับ', 'info');
+                } else {
+                    Swal.fire('ข้อผิดพลาดเครือข่าย', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error');
+                }
+            }
+            btn.innerText = "เข้าสู่ระบบ";
+            btn.disabled = false;
+        }
+
+        function logout() {
+            document.getElementById('loginSection').classList.remove('hidden-section');
+            document.getElementById('mainSection').classList.add('hidden-section');
+            document.getElementById('username').value = "";
+            document.getElementById('password').value = "";
+            currentStaffId = "";
+        }
+
+        // ----- ฟังก์ชันทำรายการยืม -----
+        async function processBorrow() {
+            const studentId = document.getElementById('borrowStudentId').value;
+            const equipId = document.getElementById('borrowEquipId').value;
+
+            if(!studentId || !equipId) {
+                Swal.fire('แจ้งเตือน', 'กรุณาสแกนรหัสนักศึกษาและอุปกรณ์ให้ครบถ้วน', 'warning');
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        action: "borrow", 
+                        studentId: studentId, 
+                        equipmentId: equipId,
+                        staffId: currentStaffId
+                    })
+                });
+                const result = await response.json();
+
+                if(result.success) {
+                    Swal.fire('สำเร็จ!', 'บันทึกการยืมเรียบร้อยแล้ว', 'success');
+                    document.getElementById('borrowEquipId').value = ""; // เคลียร์ช่องให้สแกนชิ้นต่อไปได้เลย
+                    document.getElementById('borrowEquipId').focus();
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่', 'error');
+            }
+        }
+
+        // ----- ฟังก์ชันทำรายการคืน -----
+        async function processReturn() {
+            const equipId = document.getElementById('returnEquipId').value;
+
+            if(!equipId) {
+                Swal.fire('แจ้งเตือน', 'กรุณาสแกนบาร์โค้ดอุปกรณ์ก่อนครับ', 'warning');
+                return;
+            }
+
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: "return", equipmentId: equipId })
+                });
+                const result = await response.json();
+
+                if(result.success) {
+                    Swal.fire('สำเร็จ!', 'บันทึกการคืนอุปกรณ์เรียบร้อยแล้ว', 'success');
+                    document.getElementById('returnEquipId').value = ""; 
+                    document.getElementById('returnEquipId').focus();
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่', 'error');
+            }
+        }
+
+        // ----- ดักจับปุ่ม Enter จากเครื่องสแกนบาร์โค้ด -----
+        document.getElementById('borrowStudentId').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') document.getElementById('borrowEquipId').focus(); // สแกน นศ. เสร็จ ให้กระโดดไปช่องสแกนอุปกรณ์
+        });
+        document.getElementById('borrowEquipId').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') processBorrow(); // สแกนอุปกรณ์เสร็จ ให้ทำการยืมทันที
+        });
+        document.getElementById('returnEquipId').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') processReturn(); // สแกนอุปกรณ์ตอนคืน ให้ทำการคืนทันที
+        });
+
+    </script>
+</body>
+</html>
