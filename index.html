@@ -161,15 +161,15 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
-                    redirect: 'follow', // เพิ่มตัวนี้เผื่อ Google มีการเปลี่ยนเส้นทาง
+                    redirect: 'follow', 
+                        "Content-Type": "text/plain;charset=utf-8"
+                    },
                     body: JSON.stringify({ action: "login", username: user, password: pass })
                 });
                 
-                // อ่านค่าที่ Google ตอบกลับมาเป็นข้อความธรรมดาก่อน
                 const rawText = await response.text();
                 
                 try {
-                    // พยายามแปลงเป็นข้อมูลที่ระบบอ่านได้ (JSON)
                     const result = JSON.parse(rawText);
                     
                     if(result.success) {
@@ -347,6 +347,7 @@
 </body>
 
 </html>
+
 
 
 
