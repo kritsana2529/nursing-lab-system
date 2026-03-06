@@ -87,7 +87,6 @@
 
         <div id="addEquipTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
             <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🏷️ เพิ่มอุปกรณ์ใหม่และสร้างบาร์โค้ด</h3>
-            
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="space-y-4">
                     <div>
@@ -113,12 +112,10 @@
 
                 <div class="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                     <p class="text-sm text-gray-500 mb-4">ตัวอย่างบาร์โค้ดที่จะนำไปติดอุปกรณ์</p>
-                    
                     <div id="print-area" class="bg-white p-4 rounded shadow-sm text-center">
                         <svg id="liveBarcode"></svg>
                         <p id="liveBarcodeLabel" class="text-xs text-gray-600 mt-1 font-semibold"></p>
                     </div>
-
                     <button onclick="window.print()" class="mt-6 bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition flex items-center gap-2">
                         🖨️ สั่งปริ้นบาร์โค้ดนี้
                     </button>
@@ -181,7 +178,6 @@
                         Swal.fire('เข้าสู่ระบบไม่สำเร็จ', result.message, 'error');
                     }
                 } catch (parseError) {
-                    // ถ้าแปลงไม่ได้ แสดงว่า Google ส่งหน้า Error สีแดงๆ กลับมา
                     console.error("Google Error:", rawText);
                     Swal.fire('พบข้อผิดพลาดจาก Google Sheets', rawText.substring(0, 200), 'error');
                 }
@@ -216,6 +212,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ 
                         action: "borrow", 
@@ -251,6 +248,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "return", equipmentId: equipId })
                 });
@@ -302,6 +300,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ 
                         action: "addEquipment", 
@@ -316,7 +315,7 @@
                     Swal.fire('สำเร็จ!', result.message, 'success');
                     document.getElementById('newEquipId').value = "";
                     document.getElementById('newEquipName').value = "";
-                    generateBarcodeLive(); // เคลียร์บาร์โค้ดบนจอ
+                    generateBarcodeLive(); 
                     document.getElementById('newEquipId').focus();
                 } else {
                     Swal.fire('ไม่สามารถเพิ่มได้', result.message, 'error');
@@ -347,5 +346,4 @@
 
     </script>
 </body>
-
 </html>
