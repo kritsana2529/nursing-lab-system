@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
     <style>
         .hidden-section { display: none; }
-        /* ตั้งค่าสำหรับการสั่งปริ้น ให้เห็นเฉพาะบาร์โค้ด */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -130,12 +129,10 @@
     </div>
 
     <script>
-        // 🌟 สำคัญ: นำ URL ที่ได้จาก Google Apps Script มาใส่ในเครื่องหมายคำพูดด้านล่างนี้ 🌟
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzLHyGxlX3dEqnMDwSpHcHdWZKtKTDJUG9QzA4v-QcKIxSow34-otfmjaOdSBjZtPqj/exec"; 
-        
+
         let currentStaffId = "";
 
-        // ----- ฟังก์ชันสลับหน้าจอ (Tabs) -----
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section'));
             document.getElementById(tabId).classList.remove('hidden-section');
@@ -148,13 +145,11 @@
             activeBtn.classList.remove('bg-white', 'text-gray-600');
             activeBtn.classList.add('bg-blue-600', 'text-white');
 
-            // โฟกัสช่องสแกนอัตโนมัติ
             if(tabId === 'borrowTab') document.getElementById('borrowStudentId').focus();
             if(tabId === 'returnTab') document.getElementById('returnEquipId').focus();
             if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
         }
 
-        // ----- ฟังก์ชัน Login -----
         async function login() {
             if(GAS_WEB_APP_URL === "https://script.google.com/macros/s/AKfycbzLHyGxlX3dEqnMDwSpHcHdWZKtKTDJUG9QzA4v-QcKIxSow34-otfmjaOdSBjZtPqj/exec") {
                 Swal.fire('ยังไม่ได้เชื่อมต่อระบบ', 'กรุณานำ Web App URL ของ Google Apps Script มาใส่ในโค้ดบรรทัดที่ 124 ก่อนครับ', 'warning');
@@ -199,7 +194,6 @@
             currentStaffId = "";
         }
 
-        // ----- ฟังก์ชันทำรายการยืม -----
         async function processBorrow() {
             const studentId = document.getElementById('borrowStudentId').value;
             const equipId = document.getElementById('borrowEquipId').value;
@@ -235,7 +229,6 @@
             }
         }
 
-        // ----- ฟังก์ชันทำรายการคืน -----
         async function processReturn() {
             const equipId = document.getElementById('returnEquipId').value;
 
@@ -265,7 +258,6 @@
             }
         }
 
-        // ----- ฟังก์ชันสร้างบาร์โค้ดแบบ Real-time -----
         function generateBarcodeLive() {
             const id = document.getElementById('newEquipId').value;
             const name = document.getElementById('newEquipName').value;
@@ -285,7 +277,6 @@
             }
         }
 
-        // ----- ฟังก์ชันเพิ่มอุปกรณ์ใหม่ลงฐานข้อมูล -----
         async function saveNewEquipment() {
             const id = document.getElementById('newEquipId').value;
             const name = document.getElementById('newEquipName').value;
@@ -324,7 +315,6 @@
             }
         }
 
-        // ----- ดักจับปุ่ม Enter จากเครื่องสแกนบาร์โค้ด -----
         document.getElementById('borrowStudentId').addEventListener('keypress', function(e) {
             if(e.key === 'Enter') {
                 e.preventDefault();
@@ -348,3 +338,4 @@
 </body>
 
 </html>
+
