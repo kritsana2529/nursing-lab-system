@@ -151,11 +151,6 @@
         }
 
         async function login() {
-            if(GAS_WEB_APP_URL === "https://script.google.com/macros/s/AKfycbzLHyGxlX3dEqnMDwSpHcHdWZKtKTDJUG9QzA4v-QcKIxSow34-otfmjaOdSBjZtPqj/exec") {
-                Swal.fire('ยังไม่ได้เชื่อมต่อระบบ', 'กรุณานำ Web App URL ของ Google Apps Script มาใส่ในโค้ดบรรทัดที่ 124 ก่อนครับ', 'warning');
-                return;
-            }
-
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             const btn = document.getElementById('loginBtn');
@@ -338,4 +333,5 @@
 </body>
 
 </html>
+
 
