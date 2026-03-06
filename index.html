@@ -161,22 +161,36 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow', // เพิ่มตัวนี้เผื่อ Google มีการเปลี่ยนเส้นทาง
                     body: JSON.stringify({ action: "login", username: user, password: pass })
                 });
-                const result = await response.json();
-
-                if(result.success) {
-                    currentStaffId = user;
-                    document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
-                    document.getElementById('loginSection').classList.add('hidden-section');
-                    document.getElementById('mainSection').classList.remove('hidden-section');
-                    showTab('borrowTab');
-                } else {
-                    Swal.fire('เข้าสู่ระบบไม่สำเร็จ', result.message, 'error');
+                
+                // อ่านค่าที่ Google ตอบกลับมาเป็นข้อความธรรมดาก่อน
+                const rawText = await response.text();
+                
+                try {
+                    // พยายามแปลงเป็นข้อมูลที่ระบบอ่านได้ (JSON)
+                    const result = JSON.parse(rawText);
+                    
+                    if(result.success) {
+                        currentStaffId = user;
+                        document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
+                        document.getElementById('loginSection').classList.add('hidden-section');
+                        document.getElementById('mainSection').classList.remove('hidden-section');
+                        showTab('borrowTab');
+                    } else {
+                        Swal.fire('เข้าสู่ระบบไม่สำเร็จ', result.message, 'error');
+                    }
+                } catch (parseError) {
+                    // ถ้าแปลงไม่ได้ แสดงว่า Google ส่งหน้า Error สีแดงๆ กลับมา
+                    console.error("Google Error:", rawText);
+                    Swal.fire('พบข้อผิดพลาดจาก Google Sheets', rawText.substring(0, 200), 'error');
                 }
+
             } catch (error) {
-                Swal.fire('ข้อผิดพลาดเครือข่าย', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่', 'error');
+                Swal.fire('ข้อผิดพลาดการเชื่อมต่อ', error.message, 'error');
             }
+            
             btn.innerText = "เข้าสู่ระบบ";
             btn.disabled = false;
         }
@@ -333,6 +347,7 @@
 </body>
 
 </html>
+
 
 
 
