@@ -34,13 +34,13 @@
             <form id="loginForm" onsubmit="event.preventDefault(); login();" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700">รหัสนักศึกษา / รหัสเจ้าหน้าที่</label>
-                    <input type="text" id="username" class="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required autofocus>
+                    <input type="text" id="username" class="w-full px-4 py-2 border rounded focus:ring-blue-500" required autofocus>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">รหัสผ่าน</label>
-                    <input type="password" id="password" class="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                    <input type="password" id="password" class="w-full px-4 py-2 border rounded focus:ring-blue-500" required>
                 </div>
-                <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium transition">เข้าสู่ระบบ</button>
+                <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">เข้าสู่ระบบ</button>
             </form>
         </div>
     </div>
@@ -49,7 +49,7 @@
         
         <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6 border-l-4 border-blue-500">
             <div class="flex items-center gap-4">
-                <img id="displayUserPic" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="w-12 h-12 rounded-full border border-gray-300 object-cover" alt="Profile">
+                <img id="displayUserPic" src="" class="w-12 h-12 rounded-full border border-gray-300 object-cover">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">ระบบคลังอุปกรณ์</h2>
                     <p class="text-sm text-gray-600">ผู้ใช้งาน: <span id="displayUserName" class="font-bold text-blue-600"></span> (<span id="displayUserRole" class="text-gray-500"></span>)</p>
@@ -59,79 +59,64 @@
         </div>
 
         <div id="studentNav" class="hidden-section flex flex-wrap gap-2 mb-6">
-            <button onclick="showTab('dashboardTab')" id="btn-std-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg shadow transition">📊 แดชบอร์ด</button>
-            <button onclick="showTab('catalogTab'); loadCatalog();" id="btn-std-catalogTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">🛒 จองอุปกรณ์</button>
-            <button onclick="showTab('studentScanTab')" id="btn-std-studentScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">📲 รับ/คืนของ</button>
-            <button onclick="showTab('profileTab'); loadProfile();" id="btn-std-profileTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">👤 โปรไฟล์</button>
+            <button onclick="showTab('dashboardTab')" id="btn-std-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg shadow">📊 แดชบอร์ด</button>
+            <button onclick="showTab('catalogTab'); loadCatalog();" id="btn-std-catalogTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">🛒 จองอุปกรณ์</button>
+            <button onclick="showTab('studentScanTab')" id="btn-std-studentScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">📲 รับ/คืนของ</button>
+            <button onclick="showTab('profileTab'); loadProfile();" id="btn-std-profileTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">👤 โปรไฟล์</button>
         </div>
 
         <div id="staffNav" class="hidden-section flex flex-wrap gap-2 mb-6">
-            <button onclick="showTab('dashboardTab')" id="btn-staff-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg shadow transition">📊 แดชบอร์ด</button>
-            <button onclick="showTab('staffScanTab')" id="btn-staff-staffScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">📋 เตรียม/ตรวจรับ</button>
-            <button onclick="showTab('addEquipTab')" id="btn-staff-addEquipTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">🏷️ จัดการอุปกรณ์</button>
-            <button onclick="showTab('profileTab'); loadProfile();" id="btn-staff-profileTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow transition">👤 โปรไฟล์</button>
+            <button onclick="showTab('dashboardTab')" id="btn-staff-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg shadow">📊 แดชบอร์ด</button>
+            <button onclick="showTab('staffScanTab')" id="btn-staff-staffScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">📋 เตรียม/ตรวจรับ</button>
+            <button onclick="showTab('addEquipTab')" id="btn-staff-addEquipTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">🏷️ จัดการอุปกรณ์</button>
+            <button onclick="showTab('profileTab'); loadProfile();" id="btn-staff-profileTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 rounded-lg shadow">👤 โปรไฟล์</button>
         </div>
 
         <div id="profileTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
             <h3 class="text-lg font-bold text-gray-800 mb-6 border-b pb-2">👤 จัดการโปรไฟล์ส่วนตัว</h3>
             <div class="max-w-lg mx-auto space-y-6">
                 <div class="flex flex-col items-center gap-3">
-                    <img id="profilePreview" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="w-32 h-32 rounded-full border-4 border-blue-100 object-cover shadow-sm">
-                    <label class="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded-md border border-blue-200 hover:bg-blue-100 text-sm font-medium">
-                        📷 เปลี่ยนรูปโปรไฟล์
-                        <input type="file" id="profileImageInput" accept="image/*" class="hidden" onchange="previewImage(event)">
-                    </label>
-                    <p class="text-xs text-gray-400">ขนาดไฟล์ไม่ควรเกิน 2MB</p>
+                    <img id="profilePreview" src="" class="w-32 h-32 rounded-full border-4 border-blue-100 object-cover shadow-sm">
+                    <label class="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded-md border border-blue-200 text-sm font-medium">📷 เปลี่ยนรูปโปรไฟล์<input type="file" accept="image/*" class="hidden" onchange="previewImage(event)"></label>
                 </div>
-                
                 <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">เบอร์โทรศัพท์ติดต่อ</label>
-                        <input type="tel" id="profilePhone" placeholder="เช่น 0812345678" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">เปลี่ยนรหัสผ่านใหม่ (หากไม่ต้องการเปลี่ยน ให้เว้นว่างไว้)</label>
-                        <input type="password" id="profilePassword" placeholder="พิมพ์รหัสผ่านใหม่ที่นี่" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    </div>
+                    <div><label class="block text-sm">เบอร์โทรศัพท์ติดต่อ</label><input type="tel" id="profilePhone" class="w-full px-4 py-2 border rounded"></div>
+                    <div><label class="block text-sm">เปลี่ยนรหัสผ่านใหม่</label><input type="password" id="profilePassword" placeholder="เว้นว่างไว้หากไม่เปลี่ยน" class="w-full px-4 py-2 border rounded"></div>
                 </div>
-                <button onclick="saveProfile()" class="w-full bg-green-600 text-white py-3 rounded-md hover:bg-green-700 font-bold shadow-md">
-                    💾 บันทึกข้อมูลโปรไฟล์
-                </button>
+                <button onclick="saveProfile()" class="w-full bg-green-600 text-white py-3 rounded hover:bg-green-700 font-bold">💾 บันทึกข้อมูลโปรไฟล์</button>
             </div>
         </div>
 
         <div id="dashboardTab" class="bg-white p-6 rounded-xl shadow-md tab-content">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
                 <h3 class="text-lg font-bold text-gray-800">📊 10 อันดับอุปกรณ์ยอดฮิต</h3>
-                <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">🔄 อัปเดตข้อมูล</button>
+                <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-800">🔄 อัปเดตข้อมูล</button>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full dashboard-table border border-gray-200 rounded-lg">
                     <thead><tr><th class="text-center w-12">อันดับ</th><th>รหัสอุปกรณ์</th><th>ชื่ออุปกรณ์</th><th class="text-center">ถูกยืม (ครั้ง)</th><th class="text-center">ว่าง (ชิ้น)</th></tr></thead>
-                    <tbody id="dashboardBody"><tr><td colspan="5" class="text-center py-4">กำลังโหลดสถิติ...</td></tr></tbody>
+                    <tbody id="dashboardBody"><tr><td colspan="5" class="text-center py-4">กำลังโหลด...</td></tr></tbody>
                 </table>
             </div>
         </div>
 
         <div id="catalogTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🛒 รายการอุปกรณ์ที่พร้อมให้จอง</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="catalogContainer">
-                <p class="text-gray-500">กำลังโหลดรายการอุปกรณ์...</p>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🛒 แคตตาล็อกจองอุปกรณ์</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="catalogContainer">
+                <p class="text-gray-500">กำลังโหลด...</p>
             </div>
         </div>
 
         <div id="studentScanTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📲 สแกนบาร์โค้ด (สำหรับนักศึกษา)</h3>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📲 สแกนบาร์โค้ด (นักศึกษา)</h3>
             <div class="max-w-md mx-auto space-y-6">
                 <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <label class="block text-sm font-bold text-blue-800 mb-2">🟢 ขั้นตอนรับอุปกรณ์</label>
-                    <input type="text" id="scanPickup" placeholder="สแกนรหัสอุปกรณ์" class="w-full px-4 py-3 border rounded text-center text-lg">
-                    <button onclick="processStudentScan('pickup')" class="mt-2 w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">ยืนยันรับของ</button>
+                    <input type="text" id="scanPickup" placeholder="🟢 สแกนรหัสอุปกรณ์ เพื่อรับของ" class="w-full px-4 py-3 border rounded text-center text-lg">
+                    <button onclick="processStudentScan('pickup')" class="mt-2 w-full bg-blue-600 text-white py-2 rounded font-bold">ยืนยันรับของ</button>
                 </div>
                 <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                    <label class="block text-sm font-bold text-orange-800 mb-2">🟠 ขั้นตอนคืนอุปกรณ์</label>
-                    <input type="text" id="scanReturn" placeholder="สแกนรหัสอุปกรณ์" class="w-full px-4 py-3 border rounded text-center text-lg">
-                    <button onclick="processStudentScan('return')" class="mt-2 w-full bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600">ยืนยันวางคืนของ</button>
+                    <input type="text" id="scanReturn" placeholder="🟠 สแกนรหัสอุปกรณ์ เพื่อคืนของ" class="w-full px-4 py-3 border rounded text-center text-lg">
+                    <button onclick="processStudentScan('return')" class="mt-2 w-full bg-orange-500 text-white py-2 rounded font-bold">ยืนยันวางคืนของ</button>
                 </div>
             </div>
         </div>
@@ -140,37 +125,44 @@
             <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📋 สแกนอัปเดตสถานะ (เจ้าหน้าที่)</h3>
             <div class="max-w-md mx-auto space-y-6">
                 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                    <label class="block text-sm font-bold text-yellow-800 mb-2">🟡 จัดเตรียมตามใบจอง</label>
-                    <input type="text" id="scanPrepare" placeholder="สแกนรหัสอุปกรณ์" class="w-full px-4 py-3 border rounded text-center text-lg">
-                    <button onclick="processStaffScan('prepare')" class="mt-2 w-full bg-yellow-500 text-white py-2 rounded font-bold hover:bg-yellow-600">อัปเดตสถานะ "รอผู้ยืมมารับ"</button>
+                    <input type="text" id="scanPrepare" placeholder="🟡 สแกนเตรียมของตามใบจอง" class="w-full px-4 py-3 border rounded text-center text-lg">
+                    <button onclick="processStaffScan('prepare')" class="mt-2 w-full bg-yellow-500 text-white py-2 rounded font-bold">อัปเดตเป็น รอผู้ยืมมารับ</button>
                 </div>
                 <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                    <label class="block text-sm font-bold text-green-800 mb-2">🟢 ตรวจรับเข้าคลัง</label>
-                    <input type="text" id="scanConfirm" placeholder="สแกนรหัสอุปกรณ์ที่ตรวจแล้ว" class="w-full px-4 py-3 border rounded text-center text-lg">
-                    <button onclick="processStaffScan('confirm')" class="mt-2 w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">ยืนยันเข้าสต๊อก</button>
+                    <input type="text" id="scanConfirm" placeholder="🟢 สแกนเพื่อตรวจรับเข้าคลัง" class="w-full px-4 py-3 border rounded text-center text-lg">
+                    <button onclick="processStaffScan('confirm')" class="mt-2 w-full bg-green-600 text-white py-2 rounded font-bold">ยืนยันนำเข้าสต๊อก</button>
                 </div>
             </div>
         </div>
 
         <div id="addEquipTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🏷️ เพิ่มและปริ้นบาร์โค้ด</h3>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🏷️ เพิ่มอุปกรณ์และอัปโหลดรูป</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="space-y-4">
+                    <div class="p-4 border-2 border-dashed border-gray-300 rounded bg-gray-50 flex flex-col items-center">
+                        <img id="equipPreview" src="https://placehold.co/400x300/e2e8f0/475569?text=Device+Photo" class="h-32 w-full object-cover rounded mb-2 border">
+                        <label class="cursor-pointer bg-white text-gray-700 px-3 py-1 rounded border shadow-sm text-sm">
+                            📷 เลือกรูปอุปกรณ์
+                            <input type="file" accept="image/*" class="hidden" onchange="previewEquipImage(event)">
+                        </label>
+                    </div>
+
                     <div><label class="block text-sm">รหัสอุปกรณ์</label><input type="text" id="newEquipId" class="w-full px-4 py-2 border rounded" onkeyup="generateBarcodeLive()"></div>
                     <div><label class="block text-sm">ชื่ออุปกรณ์</label><input type="text" id="newEquipName" class="w-full px-4 py-2 border rounded" onkeyup="generateBarcodeLive()"></div>
                     <div class="flex gap-4">
                         <div class="w-1/2"><label class="block text-sm">หมวดหมู่</label>
-                            <select id="newEquipCategory" class="w-full px-4 py-2 border rounded"><option value="ทั่วไป">ทั่วไป</option><option value="ชุดเซ็ต">ชุดเซ็ต</option><option value="ครุภัณฑ์">ครุภัณฑ์</option></select>
+                            <select id="newEquipCategory" class="w-full px-4 py-2 border rounded"><option>ทั่วไป</option><option>ชุดเซ็ต</option><option>ครุภัณฑ์</option></select>
                         </div>
-                        <div class="w-1/2"><label class="block text-sm text-blue-600">จำนวน (ชิ้น)</label><input type="number" id="newEquipQty" value="1" min="1" class="w-full px-4 py-2 border rounded"></div>
+                        <div class="w-1/2"><label class="block text-sm text-blue-600">จำนวน (ชิ้น)</label><input type="number" id="newEquipQty" value="1" class="w-full px-4 py-2 border rounded"></div>
                     </div>
                     <button onclick="saveNewEquipment()" class="w-full bg-gray-800 text-white py-3 rounded hover:bg-gray-900 font-medium">💾 บันทึกลงฐานข้อมูล</button>
                 </div>
+
                 <div class="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                     <div id="print-area" class="bg-white p-4 rounded text-center"><svg id="liveBarcode"></svg><p id="liveBarcodeLabel" class="text-xs mt-1"></p></div>
                     <div class="w-full flex flex-col gap-2 mt-6">
-                        <button onclick="window.print()" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">🖨️ ปริ้นเฉพาะชิ้นนี้</button>
-                        <button onclick="printAllBarcodes()" class="w-full bg-indigo-500 text-white py-2 rounded hover:bg-indigo-600">📑 ปริ้นทั้งหมด (Batch Print)</button>
+                        <button onclick="window.print()" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">🖨️ ปริ้นชิ้นนี้</button>
+                        <button onclick="printAllBarcodes()" class="w-full bg-indigo-500 text-white py-2 rounded hover:bg-indigo-600">📑 ปริ้นทั้งหมด</button>
                     </div>
                 </div>
             </div>
@@ -182,21 +174,17 @@
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfG4KMT1q1hurUKBCpcCTLVwe7Jvg0j278bwe5JEj21MrJnUHX4lTTNCNq94vZsucq/exec";
 
         let currentUser = { id: "", name: "", role: "", picUrl: "" };
-        let base64ImageString = "";
+        let base64ProfileString = ""; 
+        let base64EquipString = "";
 
         function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section'));
-            document.getElementById(tabId).classList.remove('hidden-section');
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section')); document.getElementById(tabId).classList.remove('hidden-section');
             document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('bg-white', 'text-gray-600'); });
-            
             let btnStd = document.getElementById('btn-std-' + tabId); let btnStaff = document.getElementById('btn-staff-' + tabId);
             if(btnStd) { btnStd.classList.remove('bg-white', 'text-gray-600'); btnStd.classList.add('bg-blue-600', 'text-white'); }
             if(btnStaff) { btnStaff.classList.remove('bg-white', 'text-gray-600'); btnStaff.classList.add('bg-blue-600', 'text-white'); }
-
-            if(tabId === 'dashboardTab') loadDashboard(); 
-            if(tabId === 'studentScanTab') document.getElementById('scanPickup').focus();
-            if(tabId === 'staffScanTab') document.getElementById('scanPrepare').focus();
-            if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
+            if(tabId === 'dashboardTab') loadDashboard(); if(tabId === 'studentScanTab') document.getElementById('scanPickup').focus();
+            if(tabId === 'staffScanTab') document.getElementById('scanPrepare').focus(); if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
         }
 
         async function fetchAPI(payload) {
@@ -205,21 +193,15 @@
         }
 
         async function login() {
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
+            const user = document.getElementById('username').value; const pass = document.getElementById('password').value;
             const btn = document.getElementById('loginBtn'); btn.innerText = "กำลังตรวจสอบ..."; btn.disabled = true;
-
             try {
                 const result = await fetchAPI({ action: "login", username: user, password: pass });
                 if(result.success) {
                     currentUser = { id: user, name: result.data.name, role: result.data.role, picUrl: result.data.picUrl };
-                    document.getElementById('displayUserName').innerText = currentUser.name;
-                    document.getElementById('displayUserRole').innerText = currentUser.role;
-                    document.getElementById('displayUserPic').src = currentUser.picUrl;
-                    
-                    document.getElementById('loginSection').classList.add('hidden-section');
-                    document.getElementById('mainSection').classList.remove('hidden-section');
-                    
+                    document.getElementById('displayUserName').innerText = currentUser.name; document.getElementById('displayUserRole').innerText = currentUser.role;
+                    document.getElementById('displayUserPic').src = currentUser.picUrl; 
+                    document.getElementById('loginSection').classList.add('hidden-section'); document.getElementById('mainSection').classList.remove('hidden-section');
                     if(currentUser.role === "Student") { document.getElementById('studentNav').classList.remove('hidden-section'); } 
                     else { document.getElementById('staffNav').classList.remove('hidden-section'); }
                     showTab('dashboardTab'); 
@@ -231,55 +213,39 @@
         function logout() { location.reload(); }
 
         async function loadProfile() {
-            Swal.fire({ title: 'กำลังโหลดข้อมูล...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
             const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
             if(result.success) {
-                document.getElementById('profilePhone').value = result.data.phone;
-                document.getElementById('profilePreview').src = result.data.picUrl;
-                document.getElementById('profilePassword').value = "";
-                base64ImageString = ""; 
-                Swal.close();
-            } else { Swal.fire('ข้อผิดพลาด', result.message, 'error'); }
+                document.getElementById('profilePhone').value = result.data.phone; document.getElementById('profilePreview').src = result.data.picUrl;
+                document.getElementById('profilePassword').value = ""; base64ProfileString = ""; Swal.close();
+            } else Swal.fire('ข้อผิดพลาด', result.message, 'error');
+        }
+        function previewImage(event) {
+            const file = event.target.files[0]; if (file) {
+                const reader = new FileReader(); reader.onload = function(e) { document.getElementById('profilePreview').src = e.target.result; base64ProfileString = e.target.result; }
+                reader.readAsDataURL(file);
+            }
+        }
+        async function saveProfile() {
+            const phone = document.getElementById('profilePhone').value; const password = document.getElementById('profilePassword').value;
+            Swal.fire({ title: 'กำลังบันทึก...', text: 'อาจใช้เวลาสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const result = await fetchAPI({ action: "updateUserProfile", username: currentUser.id, phone: phone, password: password, imageBase64: base64ProfileString });
+            if(result.success) {
+                Swal.fire('สำเร็จ', result.message, 'success');
+                if(result.data && result.data.newPicUrl) { document.getElementById('displayUserPic').src = result.data.newPicUrl; currentUser.picUrl = result.data.newPicUrl; }
+                base64ProfileString = "";
+            } else Swal.fire('เกิดข้อผิดพลาด', result.message, 'error');
         }
 
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('profilePreview').src = e.target.result;
-                    base64ImageString = e.target.result;
-                }
+        function previewEquipImage(event) {
+            const file = event.target.files[0]; if (file) {
+                const reader = new FileReader(); reader.onload = function(e) { document.getElementById('equipPreview').src = e.target.result; base64EquipString = e.target.result; }
                 reader.readAsDataURL(file);
             }
         }
 
-        async function saveProfile() {
-            const phone = document.getElementById('profilePhone').value;
-            const password = document.getElementById('profilePassword').value;
-            
-            Swal.fire({ title: 'กำลังบันทึก...', text: 'หากอัปโหลดรูปใหม่อาจใช้เวลาสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            
-            const result = await fetchAPI({ 
-                action: "updateUserProfile", 
-                username: currentUser.id, 
-                phone: phone, 
-                password: password,
-                imageBase64: base64ImageString 
-            });
-
-            if(result.success) {
-                Swal.fire('สำเร็จ', result.message, 'success');
-                if(result.data && result.data.newPicUrl) {
-                    document.getElementById('displayUserPic').src = result.data.newPicUrl;
-                    currentUser.picUrl = result.data.newPicUrl;
-                }
-                base64ImageString = "";
-            } else { Swal.fire('เกิดข้อผิดพลาด', result.message, 'error'); }
-        }
-
         async function loadDashboard() {
-            const tbody = document.getElementById('dashboardBody'); tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">กำลังโหลดสถิติ...</td></tr>';
+            const tbody = document.getElementById('dashboardBody'); tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">กำลังโหลด...</td></tr>';
             const res = await fetchAPI({ action: "getDashboard" });
             if(res.success && res.data.length > 0) {
                 tbody.innerHTML = ''; 
@@ -287,7 +253,7 @@
                     let qtyClass = item.available > 0 ? "text-green-600" : "text-red-600 font-bold";
                     tbody.innerHTML += `<tr><td class="text-center text-gray-500">${index + 1}</td><td>${item.id}</td><td>${item.name}</td><td class="text-center">${item.borrows}</td><td class="text-center ${qtyClass}">${item.available > 0 ? item.available : "ของหมด!"}</td></tr>`;
                 });
-            } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">ยังไม่มีประวัติการยืม</td></tr>';
+            } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">ยังไม่มีประวัติ</td></tr>';
         }
 
         async function loadCatalog() {
@@ -296,15 +262,21 @@
             if(res.success && res.data.length > 0) {
                 cont.innerHTML = '';
                 res.data.forEach(item => {
-                    cont.innerHTML += `<div class="border p-4 rounded shadow bg-gray-50"><span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded">${item.category}</span><h4 class="font-bold text-lg mt-2">${item.name}</h4><p class="text-sm mt-1 mb-3">ว่าง: <span class="font-bold text-green-600">${item.qty} ชิ้น</span></p><button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-blue-600 text-white py-2 rounded text-sm">กดจอง</button></div>`;
+                    cont.innerHTML += `
+                        <div class="border p-4 rounded-xl shadow-sm bg-white hover:shadow-lg transition">
+                            <img src="${item.picUrl}" class="w-full h-40 object-cover rounded-lg mb-3 border border-gray-200">
+                            <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded">${item.category}</span>
+                            <h4 class="font-bold text-lg mt-2 truncate" title="${item.name}">${item.name}</h4>
+                            <p class="text-sm mt-1 mb-3">ว่าง: <span class="font-bold text-green-600">${item.qty} ชิ้น</span></p>
+                            <button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow-md">กดจองอุปกรณ์</button>
+                        </div>`;
                 });
             } else cont.innerHTML = '<p class="text-red-500 col-span-3">ไม่มีอุปกรณ์ว่าง</p>';
         }
 
         async function requestEquipment(barcodeId, name) {
             const { value: form } = await Swal.fire({
-                title: 'ระบุวันใช้งาน - ' + name,
-                html: `<label class="block text-left text-sm mt-2">มารับวันที่:</label><input type="date" id="swal-pickup" class="swal2-input mt-0" style="width: 80%;"><label class="block text-left text-sm mt-4">คืนวันที่:</label><input type="date" id="swal-return" class="swal2-input mt-0" style="width: 80%;">`,
+                title: 'ระบุวันใช้งาน - ' + name, html: `<label class="block text-left text-sm mt-2">มารับวันที่:</label><input type="date" id="swal-pickup" class="swal2-input mt-0" style="width: 80%;"><label class="block text-left text-sm mt-4">คืนวันที่:</label><input type="date" id="swal-return" class="swal2-input mt-0" style="width: 80%;">`,
                 focusConfirm: false, preConfirm: () => {
                     let p = document.getElementById('swal-pickup').value; let r = document.getElementById('swal-return').value;
                     if(!p || !r) Swal.showValidationMessage('กรุณาเลือกวันที่'); return { pickup: p, return: r };
@@ -341,24 +313,32 @@
         async function saveNewEquipment() {
             let id = document.getElementById('newEquipId').value; let name = document.getElementById('newEquipName').value;
             let cat = document.getElementById('newEquipCategory').value; let qty = document.getElementById('newEquipQty').value;
-            if(!id || !name) return;
-            Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
-            const res = await fetchAPI({ action: "addEquipment", equipmentId: id, name: name, category: cat, quantity: qty });
-            if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); document.getElementById('newEquipId').value = ""; document.getElementById('newEquipName').value = ""; generateBarcodeLive(); } else Swal.fire('ผิดพลาด', res.message, 'error');
+            if(!id || !name) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสและชื่อ', 'warning');
+            
+            Swal.fire({ title: 'กำลังบันทึก...', text: 'หากแนบรูป อาจใช้เวลาสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetchAPI({ action: "addEquipment", equipmentId: id, name: name, category: cat, quantity: qty, imageBase64: base64EquipString });
+            if(res.success) { 
+                Swal.fire('สำเร็จ', res.message, 'success'); 
+                document.getElementById('newEquipId').value = ""; document.getElementById('newEquipName').value = "";
+                document.getElementById('equipPreview').src = "https://placehold.co/400x300/e2e8f0/475569?text=Device+Photo"; base64EquipString = "";
+                generateBarcodeLive(); 
+            } else Swal.fire('ผิดพลาด', res.message, 'error');
         }
 
         async function printAllBarcodes() {
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) {
-                let pc = document.getElementById('batch-print-area');
-                if(!pc) { pc = document.createElement('div'); pc.id = 'batch-print-area'; document.body.appendChild(pc); }
-                pc.innerHTML = ''; 
-                res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; });
+                let pc = document.getElementById('batch-print-area'); if(!pc) { pc = document.createElement('div'); pc.id = 'batch-print-area'; document.body.appendChild(pc); }
+                pc.innerHTML = ''; res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; });
                 res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); });
                 Swal.close(); document.body.classList.add('batch-print-mode'); window.print(); document.body.classList.remove('batch-print-mode'); 
             }
         }
+        document.getElementById('scanPickup').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStudentScan('pickup'); }});
+        document.getElementById('scanReturn').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStudentScan('return'); }});
+        document.getElementById('scanPrepare').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStaffScan('prepare'); }});
+        document.getElementById('scanConfirm').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStaffScan('confirm'); }});
     </script>
 </body>
 </html>
