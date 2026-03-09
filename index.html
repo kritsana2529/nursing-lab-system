@@ -3,28 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบยืม-คืนอุปกรณ์ ห้องแล็ป คณะพยาบาลศาสตร์</title>
+    <title>ระบบคลังอุปกรณ์ ห้องแล็ปพยาบาล</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
     <style>
         .hidden-section { display: none !important; }
-        
         .dashboard-table th { background-color: #f3f4f6; color: #374151; font-weight: 600; padding: 12px; text-align: left; }
         .dashboard-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
         .dashboard-table tr:hover { background-color: #f9fafb; }
-
         @media print {
             body * { visibility: hidden; }
-            
             body:not(.batch-print-mode) #print-area, body:not(.batch-print-mode) #print-area * { visibility: visible; }
             body:not(.batch-print-mode) #print-area { position: absolute; left: 0; top: 0; padding: 20px; }
-            
             body.batch-print-mode #batch-print-area, body.batch-print-mode #batch-print-area * { visibility: visible; }
             body.batch-print-mode #batch-print-area { 
                 position: absolute; left: 0; top: 0; width: 100%; 
-                display: grid; grid-template-columns: repeat(3, 1fr); /* 3 คอลัมน์สำหรับกระดาษ A4 */
-                gap: 20px; padding: 10px; 
+                display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 10px; 
             }
             .barcode-item { text-align: center; margin-bottom: 20px; page-break-inside: avoid; }
             .barcode-item p { font-size: 12px; margin-top: 5px; color: #000; font-weight: bold;}
@@ -36,12 +31,12 @@
     <div id="loginSection" class="flex items-center justify-center min-h-screen">
         <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border-t-4 border-blue-600">
             <div class="text-center mb-6">
-                <h1 class="text-2xl font-bold text-blue-700">ระบบห้องแล็ป</h1>
-                <p class="text-sm text-gray-500 mt-1">คณะพยาบาลศาสตร์ วิทยาลัยเซนต์หลุยส์</p>
+                <h1 class="text-2xl font-bold text-blue-700">ระบบห้องแล็ปพยาบาล</h1>
+                <p class="text-sm text-gray-500 mt-1">วิทยาลัยเซนต์หลุยส์</p>
             </div>
             <form id="loginForm" onsubmit="event.preventDefault(); login();" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">รหัสผู้ใช้งาน</label>
+                    <label class="block text-sm font-medium text-gray-700">รหัสนักศึกษา / รหัสเจ้าหน้าที่</label>
                     <input type="text" id="username" class="mt-1 w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500" required autofocus>
                 </div>
                 <div>
@@ -57,72 +52,85 @@
 
     <div id="mainSection" class="hidden-section max-w-5xl mx-auto mt-8 p-4">
         
-        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6">
+        <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-6 border-l-4 border-blue-500">
             <div>
-                <h2 class="text-xl font-bold text-gray-800">ระบบจัดการห้องแล็ปพยาบาล</h2>
-                <p class="text-sm text-gray-600">ผู้ใช้งาน: <span id="displayStaffName" class="font-semibold text-blue-600"></span></p>
+                <h2 class="text-xl font-bold text-gray-800">ระบบจัดการอุปกรณ์ห้องแล็ป</h2>
+                <p class="text-sm text-gray-600">ผู้ใช้งาน: <span id="displayUserName" class="font-bold text-blue-600"></span> (<span id="displayUserRole" class="text-gray-500"></span>)</p>
             </div>
             <button onclick="logout()" class="text-red-500 hover:text-red-700 text-sm font-medium border border-red-500 px-3 py-1 rounded">ออกจากระบบ</button>
         </div>
 
-        <div class="flex flex-wrap gap-2 mb-6">
-            <button onclick="showTab('dashboardTab')" id="btn-dashboardTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📊 แดชบอร์ด</button>
-            <button onclick="showTab('borrowTab')" id="btn-borrowTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📤 โหมดยืม</button>
-            <button onclick="showTab('returnTab')" id="btn-returnTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📥 โหมดคืน</button>
-            <button onclick="showTab('addEquipTab')" id="btn-addEquipTab" class="tab-btn flex-1 min-w-[150px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">🏷️ จัดการอุปกรณ์</button>
+        <div id="studentNav" class="hidden-section flex flex-wrap gap-2 mb-6">
+            <button onclick="showTab('dashboardTab')" id="btn-std-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📊 แดชบอร์ด</button>
+            <button onclick="showTab('catalogTab'); loadCatalog();" id="btn-std-catalogTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">🛒 จองอุปกรณ์</button>
+            <button onclick="showTab('studentScanTab')" id="btn-std-studentScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📲 สแกนรับ/คืนของ</button>
+        </div>
+
+        <div id="staffNav" class="hidden-section flex flex-wrap gap-2 mb-6">
+            <button onclick="showTab('dashboardTab')" id="btn-staff-dashboardTab" class="tab-btn flex-1 py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📊 แดชบอร์ด</button>
+            <button onclick="showTab('staffScanTab')" id="btn-staff-staffScanTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📋 สแกนเตรียม/ตรวจรับ</button>
+            <button onclick="showTab('addEquipTab')" id="btn-staff-addEquipTab" class="tab-btn flex-1 py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">🏷️ จัดการคลังอุปกรณ์</button>
         </div>
 
         <div id="dashboardTab" class="bg-white p-6 rounded-xl shadow-md tab-content">
             <div class="flex justify-between items-center border-b pb-4 mb-4">
-                <h3 class="text-lg font-bold text-gray-800">📊 10 อันดับอุปกรณ์ยอดฮิต (ถูกยืมบ่อยสุด)</h3>
-                <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                    🔄 รีเฟรชข้อมูล
-                </button>
+                <h3 class="text-lg font-bold text-gray-800">📊 10 อันดับอุปกรณ์ที่มีการใช้งานสูงสุด</h3>
+                <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">🔄 อัปเดตข้อมูล</button>
             </div>
-            
             <div class="overflow-x-auto">
                 <table class="w-full dashboard-table border border-gray-200 rounded-lg">
                     <thead>
                         <tr>
-                            <th class="w-12 text-center">อันดับ</th>
+                            <th class="text-center w-12">อันดับ</th>
                             <th>รหัสอุปกรณ์</th>
-                            <th>ชื่ออุปกรณ์ / ชุดหัตถการ</th>
-                            <th class="text-center">จำนวนการยืม (ครั้ง)</th>
-                            <th class="text-center">คงเหลือในแล็ป (ชิ้น)</th>
+                            <th>ชื่ออุปกรณ์</th>
+                            <th class="text-center">ถูกยืม (ครั้ง)</th>
+                            <th class="text-center">ว่างในคลัง (ชิ้น)</th>
                         </tr>
                     </thead>
-                    <tbody id="topEquipmentsTableBody">
-                        <tr><td colspan="5" class="text-center text-gray-500 py-4">กำลังโหลดสถิติ...</td></tr>
+                    <tbody id="dashboardBody">
+                        <tr><td colspan="5" class="text-center py-4">กำลังโหลดสถิติ...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div id="borrowTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📤 ทำรายการยืมอุปกรณ์</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">1. รหัสนักศึกษา (ผู้ยืม)</label>
-                    <input type="text" id="borrowStudentId" placeholder="สแกนหรือพิมพ์รหัสนักศึกษา" class="mt-1 w-full px-4 py-3 border border-blue-300 rounded-md bg-blue-50 focus:bg-white focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">2. รหัสบาร์โค้ดอุปกรณ์</label>
-                    <input type="text" id="borrowEquipId" placeholder="สแกนบาร์โค้ดอุปกรณ์ที่นี่..." class="mt-1 w-full px-4 py-3 border border-green-300 rounded-md bg-green-50 focus:bg-white focus:ring-2 focus:ring-green-500">
-                </div>
+        <div id="catalogTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🛒 รายการอุปกรณ์ที่พร้อมให้จอง</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="catalogContainer">
+                <p class="text-gray-500">กำลังโหลดรายการอุปกรณ์...</p>
             </div>
-            <button onclick="processBorrow()" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 font-bold text-lg shadow-md">
-                ยืนยันการยืมอุปกรณ์
-            </button>
         </div>
 
-        <div id="returnTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📥 ทำรายการคืนอุปกรณ์</h3>
-            <div class="max-w-md mx-auto text-center">
-                <label class="block text-sm font-medium text-gray-700 text-left mb-2">สแกนรหัสบาร์โค้ดอุปกรณ์ที่นำมาคืน</label>
-                <input type="text" id="returnEquipId" placeholder="สแกนบาร์โค้ดที่นี่..." class="w-full px-4 py-4 border-2 border-green-400 rounded-lg text-center text-lg focus:ring-4 focus:ring-green-200 focus:outline-none">
-                <button onclick="processReturn()" class="mt-4 w-full bg-green-500 text-white py-3 rounded-md hover:bg-green-600 font-bold text-lg shadow-md">
-                    ยืนยันการคืนอุปกรณ์
-                </button>
+        <div id="studentScanTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📲 สแกนบาร์โค้ด (สำหรับนักศึกษา)</h3>
+            <div class="max-w-md mx-auto space-y-6">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <label class="block text-sm font-bold text-blue-800 mb-2">🟢 ขั้นตอนการรับอุปกรณ์</label>
+                    <input type="text" id="scanPickup" placeholder="สแกนรหัสอุปกรณ์ที่ได้รับจากเจ้าหน้าที่" class="w-full px-4 py-3 border rounded focus:ring-2 focus:ring-blue-500 text-center text-lg">
+                    <button onclick="processStudentScan('pickup')" class="mt-2 w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">ยืนยันการรับของ</button>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <label class="block text-sm font-bold text-orange-800 mb-2">🟠 ขั้นตอนการคืนอุปกรณ์</label>
+                    <input type="text" id="scanReturn" placeholder="สแกนรหัสอุปกรณ์ที่นำมาคืน" class="w-full px-4 py-3 border rounded focus:ring-2 focus:ring-orange-500 text-center text-lg">
+                    <button onclick="processStudentScan('return')" class="mt-2 w-full bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600">ยืนยันการวางคืนของ</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="staffScanTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📋 สแกนอัปเดตสถานะ (สำหรับเจ้าหน้าที่)</h3>
+            <div class="max-w-md mx-auto space-y-6">
+                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <label class="block text-sm font-bold text-yellow-800 mb-2">🟡 จัดเตรียมอุปกรณ์ตามใบจอง</label>
+                    <input type="text" id="scanPrepare" placeholder="สแกนรหัสอุปกรณ์ที่จัดเตรียมเสร็จแล้ว" class="w-full px-4 py-3 border rounded focus:ring-2 focus:ring-yellow-500 text-center text-lg">
+                    <button onclick="processStaffScan('prepare')" class="mt-2 w-full bg-yellow-500 text-white py-2 rounded font-bold hover:bg-yellow-600">อัปเดตสถานะ "รอผู้ยืมมารับ"</button>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <label class="block text-sm font-bold text-green-800 mb-2">🟢 ตรวจรับอุปกรณ์เข้าคลัง</label>
+                    <input type="text" id="scanConfirm" placeholder="สแกนรหัสอุปกรณ์ที่ตรวจสอบสภาพแล้ว" class="w-full px-4 py-3 border rounded focus:ring-2 focus:ring-green-500 text-center text-lg">
+                    <button onclick="processStaffScan('confirm')" class="mt-2 w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">ยืนยันการคืนและนำเข้าสต๊อก</button>
+                </div>
             </div>
         </div>
 
@@ -132,46 +140,37 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">รหัสอุปกรณ์</label>
-                        <input type="text" id="newEquipId" placeholder="เช่น NS-2026-001" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" onkeyup="generateBarcodeLive()">
+                        <input type="text" id="newEquipId" placeholder="เช่น NS-2026-001" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500" onkeyup="generateBarcodeLive()">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">ชื่ออุปกรณ์ / ชุดหัตถการ</label>
-                        <input type="text" id="newEquipName" placeholder="เช่น ชุดทำแผล (Dressing Set)" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" onkeyup="generateBarcodeLive()">
+                        <input type="text" id="newEquipName" placeholder="เช่น ชุดทำแผล (Dressing Set)" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500" onkeyup="generateBarcodeLive()">
                     </div>
                     <div class="flex gap-4">
                         <div class="w-1/2">
                             <label class="block text-sm font-medium text-gray-700">หมวดหมู่</label>
-                            <select id="newEquipCategory" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <select id="newEquipCategory" class="mt-1 w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500">
                                 <option value="ทั่วไป">อุปกรณ์ทั่วไป</option>
                                 <option value="ชุดเซ็ต">ชุดเซ็ตหัตถการ</option>
                                 <option value="ครุภัณฑ์">ครุภัณฑ์ชิ้นใหญ่</option>
                             </select>
                         </div>
                         <div class="w-1/2">
-                            <label class="block text-sm font-medium text-gray-700 text-blue-600">จำนวนทั้งหมด (ชิ้น)</label>
-                            <input type="number" id="newEquipQty" value="1" min="1" class="mt-1 w-full px-4 py-2 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 text-blue-600">จำนวน (ชิ้น)</label>
+                            <input type="number" id="newEquipQty" value="1" min="1" class="mt-1 w-full px-4 py-2 border border-blue-300 rounded-md focus:ring-blue-500">
                         </div>
                     </div>
-                    <button onclick="saveNewEquipment()" class="w-full bg-gray-800 text-white py-3 rounded-md hover:bg-gray-900 font-medium shadow-md">
-                        💾 บันทึกลงฐานข้อมูล
-                    </button>
+                    <button onclick="saveNewEquipment()" class="w-full bg-gray-800 text-white py-3 rounded-md hover:bg-gray-900 font-medium shadow-md">💾 บันทึกลงฐานข้อมูล</button>
                 </div>
-
                 <div class="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                    <p class="text-sm text-gray-500 mb-4">ตัวอย่างบาร์โค้ดที่จะนำไปติดอุปกรณ์</p>
+                    <p class="text-sm text-gray-500 mb-4">ตัวอย่างบาร์โค้ด</p>
                     <div id="print-area" class="bg-white p-4 rounded shadow-sm text-center">
                         <svg id="liveBarcode"></svg>
                         <p id="liveBarcodeLabel" class="text-xs text-gray-600 mt-1 font-semibold"></p>
                     </div>
-                    
                     <div class="w-full flex flex-col gap-2 mt-6">
-                        <button onclick="window.print()" class="w-full bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition flex items-center justify-center gap-2">
-                            🖨️ ปริ้นเฉพาะบาร์โค้ดนี้
-                        </button>
-                        
-                        <button onclick="printAllBarcodes()" class="w-full bg-indigo-500 text-white py-2 px-6 rounded-md hover:bg-indigo-600 transition shadow-sm font-medium">
-                            📑 ดึงจากฐานข้อมูลมาปริ้นทั้งหมด (Batch Print)
-                        </button>
+                        <button onclick="window.print()" class="w-full bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 flex items-center justify-center gap-2">🖨️ ปริ้นเฉพาะบาร์โค้ดนี้</button>
+                        <button onclick="printAllBarcodes()" class="w-full bg-indigo-500 text-white py-2 px-6 rounded-md hover:bg-indigo-600 shadow-sm font-medium">📑 ดึงข้อมูลมาปริ้นทั้งหมด (Batch Print)</button>
                     </div>
                 </div>
             </div>
@@ -182,7 +181,7 @@
     <script>
         const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfG4KMT1q1hurUKBCpcCTLVwe7Jvg0j278bwe5JEj21MrJnUHX4lTTNCNq94vZsucq/exec";
 
-        let currentStaffId = "";
+        let currentUser = { id: "", name: "", role: "" };
 
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section'));
@@ -192,37 +191,53 @@
                 btn.classList.remove('bg-blue-600', 'text-white');
                 btn.classList.add('bg-white', 'text-gray-600');
             });
-            let activeBtn = document.getElementById('btn-' + tabId);
-            activeBtn.classList.remove('bg-white', 'text-gray-600');
-            activeBtn.classList.add('bg-blue-600', 'text-white');
+            
+            let btnStd = document.getElementById('btn-std-' + tabId);
+            let btnStaff = document.getElementById('btn-staff-' + tabId);
+            if(btnStd) { btnStd.classList.remove('bg-white', 'text-gray-600'); btnStd.classList.add('bg-blue-600', 'text-white'); }
+            if(btnStaff) { btnStaff.classList.remove('bg-white', 'text-gray-600'); btnStaff.classList.add('bg-blue-600', 'text-white'); }
 
-            if(tabId === 'borrowTab') document.getElementById('borrowStudentId').focus();
-            if(tabId === 'returnTab') document.getElementById('returnEquipId').focus();
-            if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
             if(tabId === 'dashboardTab') loadDashboard(); 
+            if(tabId === 'studentScanTab') document.getElementById('scanPickup').focus();
+            if(tabId === 'staffScanTab') document.getElementById('scanPrepare').focus();
+            if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
+        }
+
+        async function fetchAPI(payload) {
+            const response = await fetch(GAS_WEB_APP_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
         }
 
         async function login() {
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             const btn = document.getElementById('loginBtn');
-            btn.innerText = "กำลังตรวจสอบ...";
-            btn.disabled = true;
+            btn.innerText = "กำลังตรวจสอบ..."; btn.disabled = true;
 
             try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "login", username: user, password: pass })
-                });
-                const result = await response.json();
+                const result = await fetchAPI({ action: "login", username: user, password: pass });
                 
                 if(result.success) {
-                    currentStaffId = user;
-                    document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
+                    currentUser = { id: user, name: result.data.name, role: result.data.role };
+                    
+                    document.getElementById('displayUserName').innerText = currentUser.name;
+                    document.getElementById('displayUserRole').innerText = currentUser.role;
                     document.getElementById('loginSection').classList.add('hidden-section');
                     document.getElementById('mainSection').classList.remove('hidden-section');
+                    
+                    if(currentUser.role === "Student") {
+                        document.getElementById('studentNav').classList.remove('hidden-section');
+                        document.getElementById('staffNav').classList.add('hidden-section');
+                    } else {
+                        document.getElementById('staffNav').classList.remove('hidden-section');
+                        document.getElementById('studentNav').classList.add('hidden-section');
+                    }
+                    
                     showTab('dashboardTab'); 
                 } else {
                     Swal.fire('ไม่สำเร็จ', result.message, 'error');
@@ -230,37 +245,26 @@
             } catch (error) {
                 Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
             }
-            btn.innerText = "เข้าสู่ระบบ";
-            btn.disabled = false;
+            btn.innerText = "เข้าสู่ระบบ"; btn.disabled = false;
         }
 
         function logout() {
             document.getElementById('loginSection').classList.remove('hidden-section');
             document.getElementById('mainSection').classList.add('hidden-section');
-            document.getElementById('username').value = "";
-            document.getElementById('password').value = "";
-            currentStaffId = "";
+            document.getElementById('username').value = ""; document.getElementById('password').value = "";
+            currentUser = { id: "", name: "", role: "" };
         }
 
         async function loadDashboard() {
-            const tbody = document.getElementById('topEquipmentsTableBody');
+            const tbody = document.getElementById('dashboardBody');
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-4">กำลังโหลดสถิติ...</td></tr>';
-
             try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "getDashboard" })
-                });
-                const result = await response.json();
-                
+                const result = await fetchAPI({ action: "getDashboard" });
                 if(result.success && result.data.length > 0) {
                     tbody.innerHTML = ''; 
                     result.data.forEach((item, index) => {
                         let qtyClass = item.available > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
                         let qtyText = item.available > 0 ? item.available : "ของหมด!";
-                        
                         tbody.innerHTML += `
                             <tr>
                                 <td class="text-center font-bold text-gray-500">${index + 1}</td>
@@ -272,61 +276,92 @@
                         `;
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-4">ยังไม่มีประวัติการยืมอุปกรณ์เลยครับ</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-4">ยังไม่มีประวัติการยืม</td></tr>';
                 }
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการดึงข้อมูล</td></tr>';
             }
         }
 
-        async function processBorrow() {
-            const studentId = document.getElementById('borrowStudentId').value;
-            const equipId = document.getElementById('borrowEquipId').value;
-            if(!studentId || !equipId) return Swal.fire('แจ้งเตือน', 'กรุณาสแกนให้ครบถ้วน', 'warning');
-
-            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        async function loadCatalog() {
+            const container = document.getElementById('catalogContainer');
+            container.innerHTML = '<p class="text-gray-500 col-span-3">กำลังโหลดรายการอุปกรณ์...</p>';
             try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "borrow", studentId: studentId, equipmentId: equipId, staffId: currentStaffId })
-                });
-                const result = await response.json();
-                if(result.success) {
-                    Swal.fire('สำเร็จ!', result.message, 'success');
-                    document.getElementById('borrowEquipId').value = ""; 
-                    document.getElementById('borrowEquipId').focus();
+                const result = await fetchAPI({ action: "getAvailableEquipments" });
+                if(result.success && result.data.length > 0) {
+                    container.innerHTML = '';
+                    result.data.forEach(item => {
+                        container.innerHTML += `
+                            <div class="border rounded-lg p-4 shadow-sm hover:shadow-md transition bg-gray-50">
+                                <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded">${item.category}</span>
+                                <h4 class="font-bold text-lg mt-2">${item.name}</h4>
+                                <p class="text-sm text-gray-600">รหัส: ${item.id}</p>
+                                <p class="text-sm mt-1">คงเหลือ: <span class="font-bold text-green-600">${item.qty} ชิ้น</span></p>
+                                <button onclick="requestEquipment('${item.id}')" class="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-sm font-semibold">
+                                    กดจองอุปกรณ์นี้
+                                </button>
+                            </div>
+                        `;
+                    });
                 } else {
-                    Swal.fire('ไม่สามารถยืมได้', result.message, 'error');
+                    container.innerHTML = '<p class="text-red-500 col-span-3">ขณะนี้ไม่มีอุปกรณ์เหลือให้ยืมเลยครับ</p>';
                 }
             } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
+                container.innerHTML = '<p class="text-red-500 col-span-3">เกิดข้อผิดพลาดในการดึงข้อมูล</p>';
             }
         }
 
-        async function processReturn() {
-            const equipId = document.getElementById('returnEquipId').value;
-            if(!equipId) return Swal.fire('แจ้งเตือน', 'กรุณาสแกนบาร์โค้ดอุปกรณ์ก่อนครับ', 'warning');
-
-            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "return", equipmentId: equipId })
-                });
-                const result = await response.json();
-                if(result.success) {
-                    Swal.fire('สำเร็จ!', result.message, 'success');
-                    document.getElementById('returnEquipId').value = ""; 
-                    document.getElementById('returnEquipId').focus();
-                } else {
-                    Swal.fire('เกิดข้อผิดพลาด', result.message, 'error');
+        async function requestEquipment(barcodeId) {
+            Swal.fire({ title: 'ยืนยันการจอง', text: "ต้องการส่งคำขอจองอุปกรณ์นี้ใช่หรือไม่?", icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก' })
+            .then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId });
+                    if(res.success) {
+                        Swal.fire('สำเร็จ', res.message, 'success');
+                        loadCatalog();
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', res.message, 'error');
+                    }
                 }
-            } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
+            });
+        }
+
+        async function processStudentScan(type) {
+            let inputId = type === 'pickup' ? 'scanPickup' : 'scanReturn';
+            let actionType = type === 'pickup' ? 'studentPickup' : 'studentReturn';
+            const barcode = document.getElementById(inputId).value;
+            
+            if(!barcode) return Swal.fire('แจ้งเตือน', 'กรุณาสแกนบาร์โค้ดก่อนครับ', 'warning');
+            
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetchAPI({ action: actionType, studentId: currentUser.id, barcode: barcode });
+            
+            if(res.success) {
+                Swal.fire('สำเร็จ', res.message, 'success');
+                document.getElementById(inputId).value = "";
+                document.getElementById(inputId).focus();
+            } else {
+                Swal.fire('ข้อผิดพลาด', res.message, 'error');
+            }
+        }
+
+        async function processStaffScan(type) {
+            let inputId = type === 'prepare' ? 'scanPrepare' : 'scanConfirm';
+            let actionType = type === 'prepare' ? 'staffPrepare' : 'staffConfirm';
+            const barcode = document.getElementById(inputId).value;
+            
+            if(!barcode) return Swal.fire('แจ้งเตือน', 'กรุณาสแกนบาร์โค้ดก่อนครับ', 'warning');
+            
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetchAPI({ action: actionType, barcode: barcode });
+            
+            if(res.success) {
+                Swal.fire('สำเร็จ', res.message, 'success');
+                document.getElementById(inputId).value = "";
+                document.getElementById(inputId).focus();
+            } else {
+                Swal.fire('ข้อผิดพลาด', res.message, 'error');
             }
         }
 
@@ -337,92 +372,48 @@
                 JsBarcode("#liveBarcode", id, { format: "CODE128", width: 2, height: 50, displayValue: true, fontSize: 16 });
                 document.getElementById('liveBarcodeLabel').innerText = name;
             } else {
-                document.getElementById('liveBarcode').innerHTML = "";
-                document.getElementById('liveBarcodeLabel').innerText = "";
+                document.getElementById('liveBarcode').innerHTML = ""; document.getElementById('liveBarcodeLabel').innerText = "";
             }
         }
 
         async function saveNewEquipment() {
             const id = document.getElementById('newEquipId').value;
             const name = document.getElementById('newEquipName').value;
-            const category = document.getElementById('newEquipCategory').value;
+            const cat = document.getElementById('newEquipCategory').value;
             const qty = document.getElementById('newEquipQty').value;
+            if(!id || !name) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสและชื่อ', 'warning');
 
-            if(!id || !name) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสและชื่ออุปกรณ์', 'warning');
-
-            Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "addEquipment", equipmentId: id, name: name, category: category, quantity: qty })
-                });
-                const result = await response.json();
-                if(result.success) {
-                    Swal.fire('สำเร็จ!', result.message, 'success');
-                    document.getElementById('newEquipId').value = "";
-                    document.getElementById('newEquipName').value = "";
-                    document.getElementById('newEquipQty').value = "1";
-                    generateBarcodeLive(); 
-                    document.getElementById('newEquipId').focus();
-                } else {
-                    Swal.fire('ไม่สามารถเพิ่มได้', result.message, 'error');
-                }
-            } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
-            }
+            Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetchAPI({ action: "addEquipment", equipmentId: id, name: name, category: cat, quantity: qty });
+            if(res.success) {
+                Swal.fire('สำเร็จ!', res.message, 'success');
+                document.getElementById('newEquipId').value = ""; document.getElementById('newEquipName').value = ""; document.getElementById('newEquipQty').value = "1";
+                generateBarcodeLive(); document.getElementById('newEquipId').focus();
+            } else { Swal.fire('ข้อผิดพลาด', res.message, 'error'); }
         }
 
         async function printAllBarcodes() {
-            Swal.fire({ title: 'กำลังโหลดข้อมูล...', text: 'ดึงข้อมูลอุปกรณ์ทั้งหมดจากตาราง', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            try {
-                const response = await fetch(GAS_WEB_APP_URL, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "getAllEquipment" })
+            Swal.fire({ title: 'กำลังโหลด...', text: 'ดึงข้อมูลอุปกรณ์', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            const res = await fetchAPI({ action: "getAllEquipment" });
+            if(res.success && res.data.length > 0) {
+                let printContainer = document.getElementById('batch-print-area');
+                if(!printContainer) { printContainer = document.createElement('div'); printContainer.id = 'batch-print-area'; document.body.appendChild(printContainer); }
+                printContainer.innerHTML = ''; 
+                res.data.forEach((item, index) => {
+                    let div = document.createElement('div'); div.className = 'barcode-item';
+                    div.innerHTML = `<svg id="batch-barcode-${index}"></svg><p>${item.name}</p>`;
+                    printContainer.appendChild(div);
                 });
-                const result = await response.json();
-
-                if(result.success && result.data.length > 0) {
-                    let printContainer = document.getElementById('batch-print-area');
-                    if(!printContainer) {
-                        printContainer = document.createElement('div');
-                        printContainer.id = 'batch-print-area';
-                        document.body.appendChild(printContainer);
-                    }
-                    printContainer.innerHTML = ''; 
-                    
-                    result.data.forEach((item, index) => {
-                        let div = document.createElement('div');
-                        div.className = 'barcode-item';
-                        div.innerHTML = `<svg id="batch-barcode-${index}"></svg><p>${item.name}</p>`;
-                        printContainer.appendChild(div);
-                    });
-
-                    result.data.forEach((item, index) => {
-                        JsBarcode(`#batch-barcode-${index}`, item.id, { 
-                            format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 
-                        });
-                    });
-
-                    Swal.close();
-                    document.body.classList.add('batch-print-mode');
-                    window.print();
-                    document.body.classList.remove('batch-print-mode'); 
-                } else {
-                    Swal.fire('แจ้งเตือน', 'ยังไม่มีข้อมูลอุปกรณ์ในระบบครับ', 'warning');
-                }
-            } catch (error) {
-                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
-            }
+                res.data.forEach((item, index) => { JsBarcode(`#batch-barcode-${index}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); });
+                Swal.close();
+                document.body.classList.add('batch-print-mode'); window.print(); document.body.classList.remove('batch-print-mode'); 
+            } else { Swal.fire('แจ้งเตือน', 'ยังไม่มีข้อมูล', 'warning'); }
         }
 
-        document.getElementById('borrowStudentId').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); document.getElementById('borrowEquipId').focus(); }});
-        document.getElementById('borrowEquipId').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processBorrow(); }});
-        document.getElementById('returnEquipId').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processReturn(); }});
+        document.getElementById('scanPickup').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStudentScan('pickup'); }});
+        document.getElementById('scanReturn').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStudentScan('return'); }});
+        document.getElementById('scanPrepare').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStaffScan('prepare'); }});
+        document.getElementById('scanConfirm').addEventListener('keypress', e => { if(e.key === 'Enter') { e.preventDefault(); processStaffScan('confirm'); }});
     </script>
 </body>
 </html>
