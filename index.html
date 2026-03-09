@@ -9,14 +9,26 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
     <style>
         .hidden-section { display: none !important; }
-        @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; padding: 20px; }
-        }
+        
         .dashboard-table th { background-color: #f3f4f6; color: #374151; font-weight: 600; padding: 12px; text-align: left; }
         .dashboard-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
         .dashboard-table tr:hover { background-color: #f9fafb; }
+
+        @media print {
+            body * { visibility: hidden; }
+            
+            body:not(.batch-print-mode) #print-area, body:not(.batch-print-mode) #print-area * { visibility: visible; }
+            body:not(.batch-print-mode) #print-area { position: absolute; left: 0; top: 0; padding: 20px; }
+            
+            body.batch-print-mode #batch-print-area, body.batch-print-mode #batch-print-area * { visibility: visible; }
+            body.batch-print-mode #batch-print-area { 
+                position: absolute; left: 0; top: 0; width: 100%; 
+                display: grid; grid-template-columns: repeat(3, 1fr); /* 3 คอลัมน์สำหรับกระดาษ A4 */
+                gap: 20px; padding: 10px; 
+            }
+            .barcode-item { text-align: center; margin-bottom: 20px; page-break-inside: avoid; }
+            .barcode-item p { font-size: 12px; margin-top: 5px; color: #000; font-weight: bold;}
+        }
     </style>
 </head>
 <body class="bg-blue-50 text-gray-800 font-sans min-h-screen">
@@ -115,7 +127,7 @@
         </div>
 
         <div id="addEquipTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
-            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🏷️ เพิ่มอุปกรณ์ใหม่เข้าสู่คลัง</h3>
+            <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">🏷️ เพิ่มอุปกรณ์ใหม่และสั่งปริ้น</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div class="space-y-4">
                     <div>
@@ -151,9 +163,16 @@
                         <svg id="liveBarcode"></svg>
                         <p id="liveBarcodeLabel" class="text-xs text-gray-600 mt-1 font-semibold"></p>
                     </div>
-                    <button onclick="window.print()" class="mt-6 bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition flex items-center gap-2">
-                        🖨️ สั่งปริ้นบาร์โค้ดนี้
-                    </button>
+                    
+                    <div class="w-full flex flex-col gap-2 mt-6">
+                        <button onclick="window.print()" class="w-full bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 transition flex items-center justify-center gap-2">
+                            🖨️ ปริ้นเฉพาะบาร์โค้ดนี้
+                        </button>
+                        
+                        <button onclick="printAllBarcodes()" class="w-full bg-indigo-500 text-white py-2 px-6 rounded-md hover:bg-indigo-600 transition shadow-sm font-medium">
+                            📑 ดึงจากฐานข้อมูลมาปริ้นทั้งหมด (Batch Print)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -180,7 +199,7 @@
             if(tabId === 'borrowTab') document.getElementById('borrowStudentId').focus();
             if(tabId === 'returnTab') document.getElementById('returnEquipId').focus();
             if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
-            if(tabId === 'dashboardTab') loadDashboard();
+            if(tabId === 'dashboardTab') loadDashboard(); 
         }
 
         async function login() {
@@ -204,7 +223,6 @@
                     document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
                     document.getElementById('loginSection').classList.add('hidden-section');
                     document.getElementById('mainSection').classList.remove('hidden-section');
-                    
                     showTab('dashboardTab'); 
                 } else {
                     Swal.fire('ไม่สำเร็จ', result.message, 'error');
@@ -238,7 +256,7 @@
                 const result = await response.json();
                 
                 if(result.success && result.data.length > 0) {
-                    tbody.innerHTML = '';
+                    tbody.innerHTML = ''; 
                     result.data.forEach((item, index) => {
                         let qtyClass = item.available > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
                         let qtyText = item.available > 0 ? item.available : "ของหมด!";
@@ -270,6 +288,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "borrow", studentId: studentId, equipmentId: equipId, staffId: currentStaffId })
                 });
@@ -294,6 +313,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "return", equipmentId: equipId })
                 });
@@ -334,6 +354,7 @@
             try {
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
+                    redirect: 'follow',
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "addEquipment", equipmentId: id, name: name, category: category, quantity: qty })
                 });
@@ -347,6 +368,52 @@
                     document.getElementById('newEquipId').focus();
                 } else {
                     Swal.fire('ไม่สามารถเพิ่มได้', result.message, 'error');
+                }
+            } catch (error) {
+                Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
+            }
+        }
+
+        async function printAllBarcodes() {
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', text: 'ดึงข้อมูลอุปกรณ์ทั้งหมดจากตาราง', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getAllEquipment" })
+                });
+                const result = await response.json();
+
+                if(result.success && result.data.length > 0) {
+                    let printContainer = document.getElementById('batch-print-area');
+                    if(!printContainer) {
+                        printContainer = document.createElement('div');
+                        printContainer.id = 'batch-print-area';
+                        document.body.appendChild(printContainer);
+                    }
+                    printContainer.innerHTML = ''; 
+                    
+                    result.data.forEach((item, index) => {
+                        let div = document.createElement('div');
+                        div.className = 'barcode-item';
+                        div.innerHTML = `<svg id="batch-barcode-${index}"></svg><p>${item.name}</p>`;
+                        printContainer.appendChild(div);
+                    });
+
+                    result.data.forEach((item, index) => {
+                        JsBarcode(`#batch-barcode-${index}`, item.id, { 
+                            format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 
+                        });
+                    });
+
+                    Swal.close();
+                    document.body.classList.add('batch-print-mode');
+                    window.print();
+                    document.body.classList.remove('batch-print-mode'); 
+                } else {
+                    Swal.fire('แจ้งเตือน', 'ยังไม่มีข้อมูลอุปกรณ์ในระบบครับ', 'warning');
                 }
             } catch (error) {
                 Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อฐานข้อมูลไม่ได้', 'error');
