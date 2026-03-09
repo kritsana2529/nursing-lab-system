@@ -493,17 +493,21 @@
         }
 
         async function printAllBarcodes() {
-            Swal.fire({ title: 'กำลังเตรียมบาร์โค้ด...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังเตรียมบาร์โค้ด...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: "getAllEquipment" });
+            
             if(res.success && res.data.length > 0) {
-                let pc = document.getElementById('batch-print-area'); 
-                if(!pc) { 
-                    pc = document.createElement('div'); 
-                    pc.id = 'batch-print-area'; 
-                    document.body.appendChild(pc); 
-                }
+                let oldPc = document.getElementById('batch-print-area');
+                if(oldPc) oldPc.remove();
+
+                let pc = document.createElement('div'); 
+                pc.id = 'batch-print-area'; 
                 
-                pc.style.display = "none"; 
+                pc.style.position = "absolute";
+                pc.style.left = "-9999px";
+                pc.style.top = "0";
+
+                document.body.appendChild(pc); 
                 
                 pc.innerHTML = ''; 
                 res.data.forEach((item, i) => { 
@@ -515,10 +519,13 @@
                 
                 Swal.close(); 
                 document.body.classList.add('batch-print-mode'); 
-                window.print(); 
-                document.body.classList.remove('batch-print-mode'); 
                 
-                pc.remove(); 
+                setTimeout(() => {
+                    window.print(); 
+                    document.body.classList.remove('batch-print-mode'); 
+                    pc.remove();
+                }, 500);
+
             } else {
                 Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลอุปกรณ์ในคลัง', 'warning');
             }
@@ -526,6 +533,7 @@
     </script>
 </body>
 </html>
+
 
 
 
