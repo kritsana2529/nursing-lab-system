@@ -503,13 +503,10 @@
                 let pc = document.createElement('div'); 
                 pc.id = 'batch-print-area'; 
                 
-                pc.style.position = "absolute";
-                pc.style.left = "-9999px";
-                pc.style.top = "0";
+                pc.style.display = 'none'; 
 
                 document.body.appendChild(pc); 
                 
-                pc.innerHTML = ''; 
                 res.data.forEach((item, i) => { 
                     pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; 
                 });
@@ -520,8 +517,11 @@
                 Swal.close(); 
                 document.body.classList.add('batch-print-mode'); 
                 
+                pc.style.display = '';
+
                 setTimeout(() => {
                     window.print(); 
+                    
                     document.body.classList.remove('batch-print-mode'); 
                     pc.remove();
                 }, 500);
@@ -533,7 +533,3 @@
     </script>
 </body>
 </html>
-
-
-
-
