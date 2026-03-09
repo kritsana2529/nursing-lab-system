@@ -502,7 +502,9 @@
                     pc.id = 'batch-print-area'; 
                     document.body.appendChild(pc); 
                 }
+                
                 pc.style.display = "none"; 
+                
                 pc.innerHTML = ''; 
                 res.data.forEach((item, i) => { 
                     pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; 
@@ -510,6 +512,7 @@
                 res.data.forEach((item, i) => { 
                     JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); 
                 });
+                
                 Swal.close(); 
                 document.body.classList.add('batch-print-mode'); 
                 window.print(); 
@@ -523,5 +526,6 @@
     </script>
 </body>
 </html>
+
 
 
