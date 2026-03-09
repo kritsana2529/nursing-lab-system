@@ -493,16 +493,35 @@
         }
 
         async function printAllBarcodes() {
-            Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังเตรียมบาร์โค้ด...', didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) {
-                let pc = document.getElementById('batch-print-area'); if(!pc) { pc = document.createElement('div'); pc.id = 'batch-print-area'; document.body.appendChild(pc); }
-                pc.innerHTML = ''; res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; });
-                res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); });
-                Swal.close(); document.body.classList.add('batch-print-mode'); window.print(); document.body.classList.remove('batch-print-mode'); 
+                let pc = document.getElementById('batch-print-area'); 
+                if(!pc) { 
+                    pc = document.createElement('div'); 
+                    pc.id = 'batch-print-area'; 
+                    document.body.appendChild(pc); 
+                }
+                pc.style.display = "none"; 
+                pc.innerHTML = ''; 
+                res.data.forEach((item, i) => { 
+                    pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; 
+                });
+                res.data.forEach((item, i) => { 
+                    JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); 
+                });
+                Swal.close(); 
+                document.body.classList.add('batch-print-mode'); 
+                window.print(); 
+                document.body.classList.remove('batch-print-mode'); 
+                
+                pc.remove(); 
+            } else {
+                Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลอุปกรณ์ในคลัง', 'warning');
             }
         }
     </script>
 </body>
 </html>
+
 
