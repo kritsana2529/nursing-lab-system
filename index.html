@@ -8,12 +8,15 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
     <style>
-        .hidden-section { display: none !important; } /* แก้หน้า Login ค้าง */
+        .hidden-section { display: none !important; }
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
             #print-area { position: absolute; left: 0; top: 0; padding: 20px; }
         }
+        .dashboard-table th { background-color: #f3f4f6; color: #374151; font-weight: 600; padding: 12px; text-align: left; }
+        .dashboard-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .dashboard-table tr:hover { background-color: #f9fafb; }
     </style>
 </head>
 <body class="bg-blue-50 text-gray-800 font-sans min-h-screen">
@@ -51,12 +54,39 @@
         </div>
 
         <div class="flex flex-wrap gap-2 mb-6">
-            <button onclick="showTab('borrowTab')" id="btn-borrowTab" class="tab-btn flex-1 min-w-[150px] py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📤 โหมดยืม</button>
-            <button onclick="showTab('returnTab')" id="btn-returnTab" class="tab-btn flex-1 min-w-[150px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📥 โหมดคืน</button>
-            <button onclick="showTab('addEquipTab')" id="btn-addEquipTab" class="tab-btn flex-1 min-w-[150px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">🏷️ เพิ่มอุปกรณ์/ปริ้นบาร์โค้ด</button>
+            <button onclick="showTab('dashboardTab')" id="btn-dashboardTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-blue-600 text-white rounded-lg font-medium shadow transition">📊 แดชบอร์ด</button>
+            <button onclick="showTab('borrowTab')" id="btn-borrowTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📤 โหมดยืม</button>
+            <button onclick="showTab('returnTab')" id="btn-returnTab" class="tab-btn flex-1 min-w-[120px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">📥 โหมดคืน</button>
+            <button onclick="showTab('addEquipTab')" id="btn-addEquipTab" class="tab-btn flex-1 min-w-[150px] py-3 bg-white text-gray-600 hover:bg-gray-100 rounded-lg font-medium shadow transition">🏷️ จัดการอุปกรณ์</button>
         </div>
 
-        <div id="borrowTab" class="bg-white p-6 rounded-xl shadow-md tab-content">
+        <div id="dashboardTab" class="bg-white p-6 rounded-xl shadow-md tab-content">
+            <div class="flex justify-between items-center border-b pb-4 mb-4">
+                <h3 class="text-lg font-bold text-gray-800">📊 10 อันดับอุปกรณ์ยอดฮิต (ถูกยืมบ่อยสุด)</h3>
+                <button onclick="loadDashboard()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                    🔄 รีเฟรชข้อมูล
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full dashboard-table border border-gray-200 rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center">อันดับ</th>
+                            <th>รหัสอุปกรณ์</th>
+                            <th>ชื่ออุปกรณ์ / ชุดหัตถการ</th>
+                            <th class="text-center">จำนวนการยืม (ครั้ง)</th>
+                            <th class="text-center">คงเหลือในแล็ป (ชิ้น)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topEquipmentsTableBody">
+                        <tr><td colspan="5" class="text-center text-gray-500 py-4">กำลังโหลดสถิติ...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="borrowTab" class="hidden-section bg-white p-6 rounded-xl shadow-md tab-content">
             <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">📤 ทำรายการยืมอุปกรณ์</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -150,6 +180,7 @@
             if(tabId === 'borrowTab') document.getElementById('borrowStudentId').focus();
             if(tabId === 'returnTab') document.getElementById('returnEquipId').focus();
             if(tabId === 'addEquipTab') document.getElementById('newEquipId').focus();
+            if(tabId === 'dashboardTab') loadDashboard();
         }
 
         async function login() {
@@ -173,7 +204,8 @@
                     document.getElementById('displayStaffName').innerText = result.name + " (" + result.role + ")";
                     document.getElementById('loginSection').classList.add('hidden-section');
                     document.getElementById('mainSection').classList.remove('hidden-section');
-                    showTab('borrowTab');
+                    
+                    showTab('dashboardTab'); 
                 } else {
                     Swal.fire('ไม่สำเร็จ', result.message, 'error');
                 }
@@ -190,6 +222,43 @@
             document.getElementById('username').value = "";
             document.getElementById('password').value = "";
             currentStaffId = "";
+        }
+
+        async function loadDashboard() {
+            const tbody = document.getElementById('topEquipmentsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-4">กำลังโหลดสถิติ...</td></tr>';
+
+            try {
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getDashboard" })
+                });
+                const result = await response.json();
+                
+                if(result.success && result.data.length > 0) {
+                    tbody.innerHTML = '';
+                    result.data.forEach((item, index) => {
+                        let qtyClass = item.available > 0 ? "text-green-600 font-bold" : "text-red-600 font-bold";
+                        let qtyText = item.available > 0 ? item.available : "ของหมด!";
+                        
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="text-center font-bold text-gray-500">${index + 1}</td>
+                                <td class="font-medium">${item.id}</td>
+                                <td>${item.name}</td>
+                                <td class="text-center font-semibold text-blue-600">${item.borrows}</td>
+                                <td class="text-center ${qtyClass}">${qtyText}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-4">ยังไม่มีประวัติการยืมอุปกรณ์เลยครับ</td></tr>';
+                }
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>';
+            }
         }
 
         async function processBorrow() {
