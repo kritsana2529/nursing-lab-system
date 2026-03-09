@@ -99,7 +99,7 @@
                 <h3 class="text-lg font-bold text-gray-800">🛒 แคตตาล็อกอุปกรณ์</h3>
                 <div class="w-full md:w-1/2 relative">
                     <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><span class="text-gray-500">🔍</span></div>
-                    <input type="text" id="searchCatalogInput" onkeyup="filterCatalog()" placeholder="ค้นหาชื่ออุปกรณ์ที่ต้องการ..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 shadow-sm">
+                    <input type="text" id="searchCatalogInput" onkeyup="filterCatalog()" placeholder="ค้นหาชื่ออุปกรณ์ที่ต้องการ..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 shadow-sm">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6" id="catalogContainer"></div>
@@ -178,6 +178,27 @@
         let currentUser = { id: "", name: "", role: "", picUrl: "" };
         let base64ProfileString = ""; let base64EquipString = ""; 
 
+        function resizeAndConvertImage(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 300;
+                    const MAX_HEIGHT = 300;
+                    let width = img.width; let height = img.height;
+                    if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } } 
+                    else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    callback(canvas.toDataURL('image/jpeg', 0.6));
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section')); document.getElementById(tabId).classList.remove('hidden-section');
             document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('bg-white', 'text-gray-600'); });
@@ -224,11 +245,11 @@
             } else Swal.fire('ข้อผิดพลาด', result.message, 'error');
         }
         function previewImage(event) {
-            const file = event.target.files[0]; if (file) { const r = new FileReader(); r.onload = function(e) { document.getElementById('profilePreview').src = e.target.result; base64ProfileString = e.target.result; }; r.readAsDataURL(file); }
+            const file = event.target.files[0]; if (file) resizeAndConvertImage(file, (base64) => { document.getElementById('profilePreview').src = base64; base64ProfileString = base64; });
         }
         async function saveProfile() {
             const phone = document.getElementById('profilePhone').value; const password = document.getElementById('profilePassword').value;
-            Swal.fire({ title: 'กำลังบันทึก...', text: 'อาจใช้เวลาสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังบันทึก...', text: 'รอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const result = await fetchAPI({ action: "updateUserProfile", username: currentUser.id, phone: phone, password: password, imageBase64: base64ProfileString });
             if(result.success) {
                 Swal.fire('สำเร็จ', result.message, 'success');
@@ -238,7 +259,7 @@
         }
 
         function previewEquipImage(event) {
-            const file = event.target.files[0]; if (file) { const r = new FileReader(); r.onload = function(e) { document.getElementById('equipPreview').src = e.target.result; base64EquipString = e.target.result; }; r.readAsDataURL(file); }
+            const file = event.target.files[0]; if (file) resizeAndConvertImage(file, (base64) => { document.getElementById('equipPreview').src = base64; base64EquipString = base64; });
         }
 
         async function loadDashboard() {
@@ -255,8 +276,7 @@
 
         async function loadCatalog() {
             const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center text-gray-500">กำลังโหลดรายการอุปกรณ์...</p>';
-            document.getElementById('searchCatalogInput').value = ""; 
-            document.getElementById('noSearchResult').classList.add('hidden'); 
+            document.getElementById('searchCatalogInput').value = ""; document.getElementById('noSearchResult').classList.add('hidden'); 
             
             const res = await fetchAPI({ action: "getAvailableEquipments" });
             if(res.success && res.data.length > 0) {
@@ -264,16 +284,11 @@
                 res.data.forEach(item => {
                     cont.innerHTML += `
                         <div class="catalog-card border p-4 rounded-xl shadow-sm bg-white hover:shadow-lg transition flex flex-col justify-between" data-name="${item.name}">
-                            <div>
-                                <img src="${item.picUrl}" class="w-full h-40 object-cover rounded-lg mb-3 border border-gray-200">
-                                <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded">${item.category}</span>
-                                <h4 class="font-bold text-lg mt-2 leading-tight">${item.name}</h4>
-                                <p class="text-sm text-gray-500 mt-1">รหัส: ${item.id}</p>
-                            </div>
-                            <div class="mt-4">
-                                <p class="text-sm mb-2">สถานะ: <span class="font-bold text-green-600">พร้อมจอง ${item.qty} ชิ้น</span></p>
-                                <button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700">📌 จองอุปกรณ์นี้</button>
-                            </div>
+                            <div><img src="${item.picUrl}" class="w-full h-40 object-cover rounded-lg mb-3 border border-gray-200">
+                            <span class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded">${item.category}</span>
+                            <h4 class="font-bold text-lg mt-2 leading-tight">${item.name}</h4><p class="text-sm text-gray-500 mt-1">รหัส: ${item.id}</p></div>
+                            <div class="mt-4"><p class="text-sm mb-2">สถานะ: <span class="font-bold text-green-600">พร้อมจอง ${item.qty} ชิ้น</span></p>
+                            <button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700">📌 จองอุปกรณ์นี้</button></div>
                         </div>`;
                 });
             } else cont.innerHTML = '<p class="text-red-500 col-span-4 text-center">ไม่มีอุปกรณ์เหลือในคลังขณะนี้</p>';
@@ -281,15 +296,11 @@
 
         function filterCatalog() {
             let filterText = document.getElementById('searchCatalogInput').value.toLowerCase();
-            let cards = document.querySelectorAll('.catalog-card');
-            let visibleCount = 0;
-
+            let cards = document.querySelectorAll('.catalog-card'); let visibleCount = 0;
             cards.forEach(card => {
                 let itemName = card.getAttribute('data-name').toLowerCase();
-                if (itemName.includes(filterText)) { card.style.display = ""; visibleCount++; } 
-                else { card.style.display = "none"; }
+                if (itemName.includes(filterText)) { card.style.display = ""; visibleCount++; } else { card.style.display = "none"; }
             });
-
             if (visibleCount === 0 && cards.length > 0) { document.getElementById('noSearchResult').classList.remove('hidden'); } 
             else { document.getElementById('noSearchResult').classList.add('hidden'); }
         }
@@ -315,8 +326,7 @@
                 if (result.isConfirmed) {
                     Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() });
                     const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id });
-                    if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); } 
-                    else Swal.fire('ผิดพลาด', res.message, 'error');
+                    if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); } else Swal.fire('ผิดพลาด', res.message, 'error');
                 }
             });
         }
@@ -359,7 +369,7 @@
             let cat = document.getElementById('newEquipCategory').value; let qty = document.getElementById('newEquipQty').value;
             if(!id || !name) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสและชื่อ', 'warning');
             
-            Swal.fire({ title: 'กำลังบันทึก...', text: 'หากแนบรูป อาจใช้เวลาสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังบันทึก...', text: 'กำลังบีบอัดรูปภาพลงคลังข้อมูล', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: "addEquipment", equipmentId: id, name: name, category: cat, quantity: qty, imageBase64: base64EquipString });
             if(res.success) { 
                 Swal.fire('สำเร็จ', res.message, 'success'); 
