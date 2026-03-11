@@ -117,12 +117,24 @@
         </div>
 
         <div id="catalogTab" class="hidden-section card-brutal bg-[#f8fafc] p-6 md:p-8 tab-content">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b-4 border-black pb-6">
-                <h3 class="text-3xl font-black">🛒 แคตตาล็อกอุปกรณ์</h3>
-                <div class="w-full md:w-1/2">
-                    <input type="text" id="searchCatalogInput" onkeyup="filterCatalog()" placeholder="🔍 พิมพ์ชื่ออุปกรณ์ที่ต้องการหา..." class="w-full input-brutal bg-white text-lg">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 border-b-4 border-black pb-6">
+                <h3 class="text-3xl font-black w-full md:w-1/3">🛒 แคตตาล็อกอุปกรณ์</h3>
+                <div class="w-full md:w-2/3 flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="searchCatalogInput" onkeyup="searchAndSortCatalog()" placeholder="🔍 พิมพ์ชื่อหรือรหัสอุปกรณ์..." class="w-full sm:w-3/5 input-brutal bg-white text-lg">
+                    <select id="sortCatalogSelect" onchange="searchAndSortCatalog()" class="w-full sm:w-2/5 input-brutal bg-white font-bold cursor-pointer text-lg">
+                        <option value="name_asc">🔤 จัดเรียง: ชื่อ (ก-ฮ)</option>
+                        <option value="id_asc">🔢 จัดเรียง: รหัส (A-Z)</option>
+                    </select>
                 </div>
             </div>
+
+            <div class="flex flex-wrap gap-2 mb-6">
+                <button id="cat-btn-ALL" onclick="filterByCategory('ALL')" class="cat-tab-btn bg-[#3b82f6] text-white font-black px-6 py-2 rounded-lg btn-brutal">ทั้งหมด (ALL)</button>
+                <button id="cat-btn-ทั่วไป" onclick="filterByCategory('ทั่วไป')" class="cat-tab-btn bg-white text-black font-black px-6 py-2 rounded-lg btn-brutal">ทั่วไป</button>
+                <button id="cat-btn-ครุภัณฑ์" onclick="filterByCategory('ครุภัณฑ์')" class="cat-tab-btn bg-white text-black font-black px-6 py-2 rounded-lg btn-brutal">ครุภัณฑ์</button>
+                <button id="cat-btn-ชุดเซ็ต" onclick="filterByCategory('ชุดเซ็ต')" class="cat-tab-btn bg-white text-black font-black px-6 py-2 rounded-lg btn-brutal">ชุดเซ็ต</button>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="catalogContainer"></div>
             <p id="noSearchResult" class="hidden text-center text-red-500 py-8 font-black text-2xl bg-white border-4 border-black rounded-xl mt-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">❌ ไม่พบอุปกรณ์ที่ค้นหาครับ</p>
         </div>
@@ -330,17 +342,76 @@
             } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
         }
 
+        let globalCatalogData = [];
+        let activeCategoryFilter = 'ALL';
+
         async function loadCatalog() {
-            const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
-            document.getElementById('searchCatalogInput').value = ""; document.getElementById('noSearchResult').classList.add('hidden'); 
+            const cont = document.getElementById('catalogContainer'); 
+            cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
+            
+            document.getElementById('searchCatalogInput').value = ""; 
+            document.getElementById('sortCatalogSelect').value = "name_asc";
+            document.getElementById('noSearchResult').classList.add('hidden'); 
+            filterByCategory('ALL');
+            
             const res = await fetchAPI({ action: "getAvailableEquipments" });
             if(res.success && res.data.length > 0) {
-                cont.innerHTML = '';
-                res.data.forEach(item => {
+                globalCatalogData = res.data;
+                searchAndSortCatalog();
+            } else {
+                globalCatalogData = [];
+                cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>';
+            }
+        }
+
+        function filterByCategory(cat) {
+            activeCategoryFilter = cat;
+            
+            document.querySelectorAll('.cat-tab-btn').forEach(btn => {
+                btn.classList.remove('bg-[#3b82f6]', 'text-white');
+                btn.classList.add('bg-white', 'text-black');
+            });
+            
+            let activeBtn = document.getElementById('cat-btn-' + cat);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-black');
+                activeBtn.classList.add('bg-[#3b82f6]', 'text-white');
+            }
+            
+            searchAndSortCatalog();
+        }
+
+        function searchAndSortCatalog() {
+            if (globalCatalogData.length === 0) return;
+
+            let searchText = document.getElementById('searchCatalogInput').value.toLowerCase();
+            let sortType = document.getElementById('sortCatalogSelect').value;
+
+            let filteredData = globalCatalogData.filter(item => {
+                let matchText = item.name.toLowerCase().includes(searchText) || item.id.toLowerCase().includes(searchText);
+                let matchCat = (activeCategoryFilter === 'ALL') || (item.category === activeCategoryFilter);
+                
+                return matchText && matchCat;
+            });
+
+            filteredData.sort((a, b) => {
+                if (sortType === "name_asc") return a.name.localeCompare(b.name, 'th');
+                if (sortType === "id_asc") return a.id.localeCompare(b.id, 'en');
+                return 0;
+            });
+
+            const cont = document.getElementById('catalogContainer');
+            cont.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                document.getElementById('noSearchResult').classList.remove('hidden');
+            } else {
+                document.getElementById('noSearchResult').classList.add('hidden');
+                filteredData.forEach(item => {
                     cont.innerHTML += `
-                        <div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between" data-name="${item.name}">
+                        <div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1">
                             <div>
-                                <div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-gray-100">
+                                <div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center">
                                     <img src="${item.picUrl}" class="w-full h-full object-cover">
                                 </div>
                                 <span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span>
@@ -353,14 +424,7 @@
                             </div>
                         </div>`;
                 });
-            } else cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>';
-        }
-
-        function filterCatalog() {
-            let filterText = document.getElementById('searchCatalogInput').value.toLowerCase();
-            let cards = document.querySelectorAll('.catalog-card'); let visibleCount = 0;
-            cards.forEach(card => { if (card.getAttribute('data-name').toLowerCase().includes(filterText)) { card.style.display = ""; visibleCount++; } else { card.style.display = "none"; } });
-            if (visibleCount === 0 && cards.length > 0) document.getElementById('noSearchResult').classList.remove('hidden'); else document.getElementById('noSearchResult').classList.add('hidden');
+            }
         }
 
         async function requestEquipment(barcodeId, name) {
@@ -403,14 +467,17 @@
         async function loadTasks() {
             const cont = document.getElementById('tasksContainer'); cont.innerHTML = '<p class="col-span-2 text-center py-4 font-bold text-xl">กำลังดึงคิวงาน...</p>';
             const res = await fetchAPI({ action: "getTasks", role: currentUser.role, studentId: currentUser.id });
+            
             if(res.success && res.data.length > 0) {
                 cont.innerHTML = '';
                 res.data.forEach(task => {
                     let actionBtn = ""; let targetStatus = ""; let color = "";
+                    
                     if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม (สแกน)"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
-                    if(task.status === "รอผู้ยืมมารับ" && currentUser.role === "Student") { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; }
-                    if(task.status === "ถูกยืม" && currentUser.role === "Student") { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; }
                     if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับเข้าคลัง"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
+                    
+                    if(task.status === "รอผู้ยืมมารับ" && task.studentId === currentUser.id) { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; }
+                    if(task.status === "ถูกยืม" && task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; }
 
                     if(actionBtn !== "") {
                         cont.innerHTML += `
@@ -563,4 +630,3 @@
     </script>
 </body>
 </html>
-
