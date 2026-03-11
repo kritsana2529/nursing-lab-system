@@ -122,8 +122,12 @@
                 <div class="w-full md:w-2/3 flex flex-col sm:flex-row gap-3">
                     <input type="text" id="searchCatalogInput" onkeyup="searchAndSortCatalog()" placeholder="🔍 พิมพ์ชื่อหรือรหัสอุปกรณ์..." class="w-full sm:w-3/5 input-brutal bg-white text-lg">
                     <select id="sortCatalogSelect" onchange="searchAndSortCatalog()" class="w-full sm:w-2/5 input-brutal bg-white font-bold cursor-pointer text-lg">
-                        <option value="name_asc">🔤 จัดเรียง: ชื่อ (ก-ฮ)</option>
-                        <option value="id_asc">🔢 จัดเรียง: รหัส (A-Z)</option>
+                        <option value="name_asc">🔤 ชื่อ: ก ไป ฮ</option>
+                        <option value="name_desc">🔤 ชื่อ: ฮ ไป ก</option>
+                        <option value="id_asc">🔢 รหัส: น้อย ไป มาก</option>
+                        <option value="id_desc">🔢 รหัส: มาก ไป น้อย</option>
+                        <option value="qty_desc">📦 ของว่าง: มาก ไป น้อย</option>
+                        <option value="qty_asc">📦 ของว่าง: น้อย ไป มาก</option>
                     </select>
                 </div>
             </div>
@@ -222,26 +226,32 @@
         let base64ProfileString = ""; let base64EquipString = ""; 
         let currentScanTask = { txId: "", requiredItems: [], scannedItems: [], toStatus: "" };
 
+        async function updateBadges() {
+            const res = await fetchAPI({ action: "getBadges", role: currentUser.role, studentId: currentUser.id });
+            if(res.success) {
+                const b1 = document.getElementById('badge-myBookingsTab');
+                const b2 = document.getElementById('badge-scanTasksTab');
+                if(b1) { if(res.data.myBookings > 0) { b1.innerText = res.data.myBookings; b1.classList.remove('hidden'); } else b1.classList.add('hidden'); }
+                if(b2) { if(res.data.tasks > 0) { b2.innerText = res.data.tasks; b2.classList.remove('hidden'); } else b2.classList.add('hidden'); }
+            }
+        }
+
         function resizeAndConvertImage(file, callback) {
-            const r = new FileReader();
-            r.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
+            const r = new FileReader(); r.onload = function(e) {
+                const img = new Image(); img.onload = function() {
                     const canvas = document.createElement('canvas'); const MAX = 400; 
                     let w = img.width; let h = img.height;
                     if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
                     canvas.width = w; canvas.height = h;
                     const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
                     callback(canvas.toDataURL('image/jpeg', 0.8)); 
-                }
-                img.src = e.target.result;
-            }
-            r.readAsDataURL(file);
+                }; img.src = e.target.result;
+            }; r.readAsDataURL(file);
         }
 
         function buildMenu() {
             const nav = document.getElementById('mainNav'); nav.innerHTML = '';
-            const btnClass = "tab-btn flex-grow md:flex-1 py-4 bg-white text-black font-black text-lg border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#fde047] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all";
+            const btnClass = "tab-btn relative flex-grow md:flex-1 py-4 bg-white text-black font-black text-lg border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#fde047] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all";
             
             let menus = [
                 { id: 'dashboardTab', icon: '📊', text: 'แดชบอร์ด', roles: ['Student', 'Staff'] },
@@ -254,7 +264,10 @@
 
             menus.forEach(m => {
                 if(m.roles.includes(currentUser.role)) {
-                    nav.innerHTML += `<button id="btn-${m.id}" onclick="showTab('${m.id}')" class="${btnClass}">${m.icon} <span class="hidden sm:inline">${m.text}</span></button>`;
+                    let badgeHtml = (m.id === 'myBookingsTab' || m.id === 'scanTasksTab') 
+                        ? `<span id="badge-${m.id}" class="hidden absolute -top-3 -right-3 bg-[#ef4444] text-white text-sm font-black w-8 h-8 flex items-center justify-center rounded-full border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">0</span>` 
+                        : '';
+                    nav.innerHTML += `<button id="btn-${m.id}" onclick="showTab('${m.id}')" class="${btnClass}">${m.icon} <span class="hidden sm:inline">${m.text}</span>${badgeHtml}</button>`;
                 }
             });
         }
@@ -262,16 +275,9 @@
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section')); 
             document.getElementById(tabId).classList.remove('hidden-section');
-            
-            document.querySelectorAll('.tab-btn').forEach(btn => { 
-                btn.classList.remove('bg-[#3b82f6]', 'text-white'); 
-                btn.classList.add('bg-white', 'text-black'); 
-            });
+            document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
             let activeBtn = document.getElementById('btn-' + tabId);
-            if(activeBtn) { 
-                activeBtn.classList.remove('bg-white', 'text-black', 'hover:bg-[#fde047]'); 
-                activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); 
-            }
+            if(activeBtn) { activeBtn.classList.remove('bg-white', 'text-black', 'hover:bg-[#fde047]'); activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); }
 
             if(tabId === 'dashboardTab') loadDashboard(); 
             if(tabId === 'catalogTab') loadCatalog();
@@ -297,6 +303,7 @@
                     document.getElementById('displayUserPic').src = currentUser.picUrl || "https://placehold.co/100x100"; 
                     document.getElementById('loginSection').classList.add('hidden-section'); document.getElementById('mainSection').classList.remove('hidden-section');
                     buildMenu(); showTab('dashboardTab'); 
+                    updateBadges(); // 🌟 อัปเดตตัวเลขแจ้งเตือนทันทีที่เข้าสู่ระบบ
                 } else Swal.fire('ไม่สำเร็จ', result.message, 'error');
             } catch (error) { Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อไม่ได้', 'error'); }
             btn.innerText = "👉 เข้าสู่ระบบ"; btn.disabled = false;
@@ -306,139 +313,83 @@
         async function loadProfile() {
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() });
             const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
-            if(result.success) {
-                document.getElementById('profilePhone').value = result.data.phone; 
-                document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100";
-                document.getElementById('profilePassword').value = ""; base64ProfileString = ""; Swal.close();
-            } else Swal.fire('ผิดพลาด', result.message, 'error');
+            if(result.success) { document.getElementById('profilePhone').value = result.data.phone; document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; document.getElementById('profilePassword').value = ""; base64ProfileString = ""; Swal.close(); } else Swal.fire('ผิดพลาด', result.message, 'error');
         }
         function previewImage(event, targetId, isProfile) {
-            const file = event.target.files[0]; 
-            if (file) resizeAndConvertImage(file, (base64) => { 
-                document.getElementById(targetId).src = base64; 
-                if(isProfile) base64ProfileString = base64; else base64EquipString = base64; 
-            });
+            const file = event.target.files[0]; if (file) resizeAndConvertImage(file, (base64) => { document.getElementById(targetId).src = base64; if(isProfile) base64ProfileString = base64; else base64EquipString = base64; });
         }
         async function saveProfile() {
             const phone = document.getElementById('profilePhone').value; const password = document.getElementById('profilePassword').value;
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const result = await fetchAPI({ action: "updateUserProfile", username: currentUser.id, phone: phone, password: password, imageBase64: base64ProfileString });
-            if(result.success) {
-                Swal.fire('สำเร็จ', result.message, 'success');
-                if(result.data.newPicUrl) { document.getElementById('displayUserPic').src = result.data.newPicUrl; currentUser.picUrl = result.data.newPicUrl; }
-                base64ProfileString = "";
-            } else Swal.fire('ผิดพลาด', result.message, 'error');
+            if(result.success) { Swal.fire('สำเร็จ', result.message, 'success'); if(result.data.newPicUrl) { document.getElementById('displayUserPic').src = result.data.newPicUrl; currentUser.picUrl = result.data.newPicUrl; } base64ProfileString = ""; } else Swal.fire('ผิดพลาด', result.message, 'error');
         }
 
         async function loadDashboard() {
             const tbody = document.getElementById('dashboardBody'); tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
             const res = await fetchAPI({ action: "getDashboard" });
             if(res.success && res.data.length > 0) {
-                tbody.innerHTML = ''; 
-                res.data.forEach((item, index) => {
-                    let qtyClass = item.available > 0 ? "text-green-600 font-black" : "text-red-600 font-black";
-                    tbody.innerHTML += `<tr class="hover:bg-gray-100 transition"><td class="text-center font-bold text-gray-400 text-lg">${index + 1}</td><td class="font-bold">${item.id}</td><td class="font-bold">${item.name}</td><td class="text-center font-black text-xl">${item.borrows}</td><td class="text-center text-xl ${qtyClass}">${item.available > 0 ? item.available : "หมด!"}</td></tr>`;
-                });
+                tbody.innerHTML = ''; res.data.forEach((item, index) => { let qtyClass = item.available > 0 ? "text-green-600 font-black" : "text-red-600 font-black"; tbody.innerHTML += `<tr class="hover:bg-gray-100 transition"><td class="text-center font-bold text-gray-400 text-lg">${index + 1}</td><td class="font-bold">${item.id}</td><td class="font-bold">${item.name}</td><td class="text-center font-black text-xl">${item.borrows}</td><td class="text-center text-xl ${qtyClass}">${item.available > 0 ? item.available : "หมด!"}</td></tr>`; });
             } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
         }
 
-        let globalCatalogData = [];
-        let activeCategoryFilter = 'ALL';
-
+        let globalCatalogData = []; let activeCategoryFilter = 'ALL';
         async function loadCatalog() {
-            const cont = document.getElementById('catalogContainer'); 
-            cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
-            
-            document.getElementById('searchCatalogInput').value = ""; 
-            document.getElementById('sortCatalogSelect').value = "name_asc";
-            document.getElementById('noSearchResult').classList.add('hidden'); 
+            const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
+            document.getElementById('searchCatalogInput').value = ""; document.getElementById('sortCatalogSelect').value = "name_asc"; document.getElementById('noSearchResult').classList.add('hidden'); 
             filterByCategory('ALL');
-            
             const res = await fetchAPI({ action: "getAvailableEquipments" });
-            if(res.success && res.data.length > 0) {
-                globalCatalogData = res.data;
-                searchAndSortCatalog();
-            } else {
-                globalCatalogData = [];
-                cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>';
-            }
+            if(res.success && res.data.length > 0) { globalCatalogData = res.data; searchAndSortCatalog(); } 
+            else { globalCatalogData = []; cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; }
         }
-
         function filterByCategory(cat) {
             activeCategoryFilter = cat;
-            
-            document.querySelectorAll('.cat-tab-btn').forEach(btn => {
-                btn.classList.remove('bg-[#3b82f6]', 'text-white');
-                btn.classList.add('bg-white', 'text-black');
-            });
-            
-            let activeBtn = document.getElementById('cat-btn-' + cat);
-            if(activeBtn) {
-                activeBtn.classList.remove('bg-white', 'text-black');
-                activeBtn.classList.add('bg-[#3b82f6]', 'text-white');
-            }
-            
+            document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
+            let activeBtn = document.getElementById('cat-btn-' + cat); if(activeBtn) { activeBtn.classList.remove('bg-white', 'text-black'); activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); }
             searchAndSortCatalog();
         }
-
         function searchAndSortCatalog() {
             if (globalCatalogData.length === 0) return;
-
-            let searchText = document.getElementById('searchCatalogInput').value.toLowerCase();
-            let sortType = document.getElementById('sortCatalogSelect').value;
-
+            let searchText = document.getElementById('searchCatalogInput').value.toLowerCase(); let sortType = document.getElementById('sortCatalogSelect').value;
             let filteredData = globalCatalogData.filter(item => {
                 let matchText = item.name.toLowerCase().includes(searchText) || item.id.toLowerCase().includes(searchText);
                 let matchCat = (activeCategoryFilter === 'ALL') || (item.category === activeCategoryFilter);
-                
                 return matchText && matchCat;
             });
-
             filteredData.sort((a, b) => {
-                if (sortType === "name_asc") return a.name.localeCompare(b.name, 'th');
-                if (sortType === "id_asc") return a.id.localeCompare(b.id, 'en');
+                if (sortType === "name_asc") return String(a.name).localeCompare(String(b.name), 'th');
+                if (sortType === "name_desc") return String(b.name).localeCompare(String(a.name), 'th');
+                if (sortType === "id_asc") return String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' });
+                if (sortType === "id_desc") return String(b.id).localeCompare(String(a.id), undefined, { numeric: true, sensitivity: 'base' });
+                if (sortType === "qty_desc") return parseInt(b.qty) - parseInt(a.qty);
+                if (sortType === "qty_asc") return parseInt(a.qty) - parseInt(b.qty);
                 return 0;
             });
-
-            const cont = document.getElementById('catalogContainer');
-            cont.innerHTML = '';
-
-            if (filteredData.length === 0) {
-                document.getElementById('noSearchResult').classList.remove('hidden');
-            } else {
+            const cont = document.getElementById('catalogContainer'); cont.innerHTML = '';
+            if (filteredData.length === 0) { document.getElementById('noSearchResult').classList.remove('hidden'); } 
+            else {
                 document.getElementById('noSearchResult').classList.add('hidden');
                 filteredData.forEach(item => {
-                    cont.innerHTML += `
-                        <div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1">
-                            <div>
-                                <div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center">
-                                    <img src="${item.picUrl}" class="w-full h-full object-cover">
-                                </div>
-                                <span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span>
-                                <h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4>
-                                <p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p>
-                            </div>
-                            <div class="mt-5">
-                                <p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p>
-                                <button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button>
-                            </div>
-                        </div>`;
+                    cont.innerHTML += `<div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1">
+                        <div><div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center"><img src="${item.picUrl}" class="w-full h-full object-cover"></div><span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span><h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4><p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p></div>
+                        <div class="mt-5"><p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p><button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button></div>
+                    </div>`;
                 });
             }
         }
-
         async function requestEquipment(barcodeId, name) {
             const { value: form } = await Swal.fire({
                 title: 'จองอุปกรณ์', html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p><label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label><input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;"><label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label><input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold" style="width: 85%;">`,
-                focusConfirm: false, preConfirm: () => {
-                    let p = document.getElementById('swal-pickup').value; let r = document.getElementById('swal-return').value;
-                    if(!p || !r) Swal.showValidationMessage('กรุณาระบุวันที่ให้ครบถ้วน'); return { pickup: p, return: r };
-                }
+                focusConfirm: false, preConfirm: () => { let p = document.getElementById('swal-pickup').value; let r = document.getElementById('swal-return').value; if(!p || !r) Swal.showValidationMessage('กรุณาระบุวันที่ให้ครบถ้วน'); return { pickup: p, return: r }; }
             });
             if (form) {
                 Swal.fire({ title: 'ส่งคำขอ...', didOpen: () => Swal.showLoading() });
                 const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId, pickupDate: form.pickup, returnDate: form.return });
-                if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); loadCatalog(); } else Swal.fire('ผิดพลาด', res.message, 'error');
+                if(res.success) { 
+                    Swal.fire('สำเร็จ!', res.message, 'success'); 
+                    loadCatalog(); 
+                    updateBadges();
+                } else Swal.fire('ผิดพลาด', res.message, 'error');
             }
         }
 
@@ -449,46 +400,39 @@
                 tbody.innerHTML = '';
                 res.data.forEach(item => {
                     let statusColor = item.status === "ถูกยืม" ? "text-blue-600" : "text-orange-500";
-                    let btnHTML = (item.status === "รอจัดเตรียม" || item.status === "รอผู้ยืมมารับ") 
-                        ? `<button onclick="cancelBooking('${item.txId}')" class="bg-[#ef4444] text-white px-3 py-2 rounded-lg font-black btn-brutal text-sm">❌ ยกเลิก</button>` 
-                        : `<span class="bg-gray-200 border-2 border-black px-2 py-1 font-bold rounded-md text-xs">รับของแล้ว</span>`;
+                    let btnHTML = (item.status === "รอจัดเตรียม" || item.status === "รอผู้ยืมมารับ") ? `<button onclick="cancelBooking('${item.txId}')" class="bg-[#ef4444] text-white px-3 py-2 rounded-lg font-black btn-brutal text-sm">❌ ยกเลิก</button>` : `<span class="bg-gray-200 border-2 border-black px-2 py-1 font-bold rounded-md text-xs">รับของแล้ว</span>`;
                     tbody.innerHTML += `<tr><td class="text-xs font-bold text-gray-500">${item.txId}</td><td class="font-black text-lg">${item.name}</td><td class="${statusColor} font-black text-lg">${item.status}</td><td class="text-center">${btnHTML}</td></tr>`;
                 });
             } else tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 font-bold text-gray-400">คุณยังไม่มีรายการจองครับ</td></tr>';
         }
         async function cancelBooking(txId) {
             Swal.fire({ title: 'เอาจริงดิ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่ ยกเลิกเลย!', cancelButtonText: 'เปลี่ยนใจ' }).then(async (r) => {
-                if (r.isConfirmed) { Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() });
+                if (r.isConfirmed) { 
+                    Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() });
                     const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id });
-                    if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); } else Swal.fire('ผิดพลาด', res.message, 'error'); }
+                    if(res.success) { 
+                        Swal.fire('สำเร็จ', res.message, 'success'); 
+                        loadMyBookings(); 
+                        updateBadges();
+                    } else Swal.fire('ผิดพลาด', res.message, 'error'); 
+                }
             });
         }
 
         async function loadTasks() {
             const cont = document.getElementById('tasksContainer'); cont.innerHTML = '<p class="col-span-2 text-center py-4 font-bold text-xl">กำลังดึงคิวงาน...</p>';
             const res = await fetchAPI({ action: "getTasks", role: currentUser.role, studentId: currentUser.id });
-            
             if(res.success && res.data.length > 0) {
                 cont.innerHTML = '';
                 res.data.forEach(task => {
                     let actionBtn = ""; let targetStatus = ""; let color = "";
-                    
                     if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม (สแกน)"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
                     if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับเข้าคลัง"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
-                    
                     if(task.status === "รอผู้ยืมมารับ" && task.studentId === currentUser.id) { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; }
                     if(task.status === "ถูกยืม" && task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; }
 
                     if(actionBtn !== "") {
-                        cont.innerHTML += `
-                            <div class="card-brutal p-5 bg-white flex flex-col justify-between">
-                                <div class="mb-4">
-                                    <span class="bg-black text-white font-bold px-2 py-1 rounded text-xs">Ref: ${task.txId.substring(0,12)}...</span>
-                                    <h4 class="font-black text-2xl text-gray-900 mt-3">${task.name}</h4>
-                                    <p class="font-bold text-gray-600 mt-1">ผู้จอง: <span class="text-blue-600">${task.studentId}</span></p>
-                                </div>
-                                <button onclick="openScannerTask('${task.txId}', '${task.barcode}', '${task.name}', '${task.subItems}', '${targetStatus}')" class="w-full ${color} text-white py-3 rounded-xl font-black text-xl btn-brutal">${actionBtn}</button>
-                            </div>`;
+                        cont.innerHTML += `<div class="card-brutal p-5 bg-white flex flex-col justify-between"><div class="mb-4"><span class="bg-black text-white font-bold px-2 py-1 rounded text-xs">Ref: ${task.txId.substring(0,12)}...</span><h4 class="font-black text-2xl text-gray-900 mt-3">${task.name}</h4><p class="font-bold text-gray-600 mt-1">ผู้จอง: <span class="text-blue-600">${task.studentId}</span></p></div><button onclick="openScannerTask('${task.txId}', '${task.barcode}', '${task.name}', '${task.subItems}', '${targetStatus}')" class="w-full ${color} text-white py-3 rounded-xl font-black text-xl btn-brutal">${actionBtn}</button></div>`;
                     }
                 });
                 if(cont.innerHTML === '') cont.innerHTML = '<p class="col-span-2 text-center py-8 font-black text-2xl bg-white card-brutal">🎉 งานหมดแล้วจ้า ว่าง!</p>';
@@ -496,47 +440,30 @@
         }
 
         function openScannerTask(txId, mainBarcode, equipName, subItemsStr, toStatus) {
-            let requiredItems = [];
-            if (subItemsStr && subItemsStr.trim() !== "") requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase());
-            else requiredItems = [mainBarcode.toUpperCase()]; 
-            
+            let requiredItems = []; if (subItemsStr && subItemsStr.trim() !== "") requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase()); else requiredItems = [mainBarcode.toUpperCase()]; 
             currentScanTask = { txId: txId, mainBarcode: mainBarcode, requiredItems: requiredItems, scannedItems: [], toStatus: toStatus };
-
-            let html = `
-                <div class="text-left mb-4">
-                    <p class="font-black text-xl text-blue-600">${equipName}</p>
-                    <p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p>
-                    <div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100">
-                        ${requiredItems.map(item => `<div id="check-${item}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item}</div>`).join('')}
-                    </div>
-                </div>
-                <input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off">
-                <p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>
-            `;
-
+            let html = `<div class="text-left mb-4"><p class="font-black text-xl text-blue-600">${equipName}</p><p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p><div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100">${requiredItems.map(item => `<div id="check-${item}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item}</div>`).join('')}</div></div><input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off"><p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>`;
             Swal.fire({
-                title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก',
-                customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
+                title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก', customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
                 didOpen: () => { 
                     let input = document.getElementById('liveScannerInput'); input.focus();
                     input.addEventListener('keypress', function(e) {
                         if (e.key === 'Enter') {
-                            e.preventDefault(); let val = input.value.trim().toUpperCase(); input.value = "";
-                            let feedback = document.getElementById('scanFeedback'); feedback.innerText = "";
-                            
+                            e.preventDefault(); let val = input.value.trim().toUpperCase(); input.value = ""; let feedback = document.getElementById('scanFeedback'); feedback.innerText = "";
                             if (currentScanTask.requiredItems.includes(val) && !currentScanTask.scannedItems.includes(val)) {
-                                currentScanTask.scannedItems.push(val);
-                                let box = document.getElementById(`check-${val}`);
-                                box.className = "font-black text-white bg-[#10b981] border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]";
-                                box.innerHTML = `✅ สแกนแล้ว: ${val}`;
-                                
+                                currentScanTask.scannedItems.push(val); let box = document.getElementById(`check-${val}`); box.className = "font-black text-white bg-[#10b981] border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"; box.innerHTML = `✅ สแกนแล้ว: ${val}`;
                                 if (currentScanTask.scannedItems.length === currentScanTask.requiredItems.length) {
                                     Swal.fire({title: 'ครบถ้วน!', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
                                     fetchAPI({action: "updateTxStatus", txId: currentScanTask.txId, barcode: currentScanTask.mainBarcode, toStatus: currentScanTask.toStatus})
-                                    .then(res => { if(res.success) { Swal.fire('เยี่ยมมาก!', res.message, 'success'); loadTasks(); } else Swal.fire('ผิดพลาด', res.message, 'error'); });
+                                    .then(res => { 
+                                        if(res.success) { 
+                                            Swal.fire('เยี่ยมมาก!', res.message, 'success'); 
+                                            loadTasks(); 
+                                            updateBadges();
+                                        } else Swal.fire('ผิดพลาด', res.message, 'error'); 
+                                    });
                                 }
-                            } else if (currentScanTask.scannedItems.includes(val)) { feedback.innerText = "❌ ยิงซ้ำแล้วจ้า"; } 
-                            else { feedback.innerText = "❌ รหัสผิดชิ้น!"; }
+                            } else if (currentScanTask.scannedItems.includes(val)) { feedback.innerText = "❌ ยิงซ้ำแล้วจ้า"; } else { feedback.innerText = "❌ รหัสผิดชิ้น!"; }
                         }
                     });
                 }
@@ -546,75 +473,33 @@
         async function loadEditEquipList() {
             const list = document.getElementById('editEquipList'); list.innerHTML = '<li class="p-3 text-center font-bold">กำลังโหลด...</li>';
             const res = await fetchAPI({ action: "getAllEquipment" });
-            if(res.success && res.data.length > 0) {
-                list.innerHTML = '';
-                res.data.forEach(item => {
-                    let dataStr = encodeURIComponent(JSON.stringify(item));
-                    list.innerHTML += `<li class="p-3 flex justify-between items-center border-2 border-black rounded-lg mb-2 bg-white hover:bg-yellow-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition" onclick="editEquip('${dataStr}')">
-                        <div><p class="font-black text-blue-700 text-lg">${item.id}</p><p class="font-bold text-gray-700 leading-tight">${item.name}</p></div>
-                        <span class="bg-black text-white font-bold px-3 py-1 rounded border-2 border-black">✏️</span>
-                    </li>`;
-                });
+            if(res.success && res.data.length > 0) { list.innerHTML = ''; res.data.forEach(item => { let dataStr = encodeURIComponent(JSON.stringify(item)); list.innerHTML += `<li class="p-3 flex justify-between items-center border-2 border-black rounded-lg mb-2 bg-white hover:bg-yellow-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition" onclick="editEquip('${dataStr}')"><div><p class="font-black text-blue-700 text-lg">${item.id}</p><p class="font-bold text-gray-700 leading-tight">${item.name}</p></div><span class="bg-black text-white font-bold px-3 py-1 rounded border-2 border-black">✏️</span></li>`; });
             } else list.innerHTML = '<li class="p-3 text-center font-bold">ไม่มีข้อมูล</li>';
         }
-        function toggleSubItems() {
-            let cat = document.getElementById('newEquipCategory').value;
-            if(cat === "ชุดเซ็ต") document.getElementById('subItemsDiv').classList.remove('hidden');
-            else { document.getElementById('subItemsDiv').classList.add('hidden'); document.getElementById('newSubItems').value = ""; }
-        }
+        function toggleSubItems() { let cat = document.getElementById('newEquipCategory').value; if(cat === "ชุดเซ็ต") document.getElementById('subItemsDiv').classList.remove('hidden'); else { document.getElementById('subItemsDiv').classList.add('hidden'); document.getElementById('newSubItems').value = ""; } }
         function editEquip(dataStr) {
-            let item = JSON.parse(decodeURIComponent(dataStr));
-            document.getElementById('isEditMode').value = "true";
-            document.getElementById('newEquipId').value = item.id; document.getElementById('newEquipId').readOnly = true; document.getElementById('newEquipId').classList.add('bg-gray-200');
-            document.getElementById('newEquipName').value = item.name; document.getElementById('newEquipCategory').value = item.category; document.getElementById('newEquipQty').value = item.totalQty;
-            document.getElementById('equipPreview').src = item.picUrl || "https://placehold.co/200x200?text=IMAGE"; base64EquipString = ""; 
+            let item = JSON.parse(decodeURIComponent(dataStr)); document.getElementById('isEditMode').value = "true"; document.getElementById('newEquipId').value = item.id; document.getElementById('newEquipId').readOnly = true; document.getElementById('newEquipId').classList.add('bg-gray-200'); document.getElementById('newEquipName').value = item.name; document.getElementById('newEquipCategory').value = item.category; document.getElementById('newEquipQty').value = item.totalQty; document.getElementById('equipPreview').src = item.picUrl || "https://placehold.co/200x200?text=IMAGE"; base64EquipString = ""; 
             if(item.category === "ชุดเซ็ต") { document.getElementById('subItemsDiv').classList.remove('hidden'); document.getElementById('newSubItems').value = item.subItems; } else toggleSubItems();
-            
-            let btn = document.getElementById('btnSaveEquip'); btn.innerText = "🔄 อัปเดตข้อมูล"; btn.classList.replace('bg-[#10b981]', 'bg-[#3b82f6]');
-            document.getElementById('btnCancelEdit').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); generateBarcodeLive();
+            let btn = document.getElementById('btnSaveEquip'); btn.innerText = "🔄 อัปเดตข้อมูล"; btn.classList.replace('bg-[#10b981]', 'bg-[#3b82f6]'); document.getElementById('btnCancelEdit').classList.remove('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); generateBarcodeLive();
         }
         function resetEquipForm() {
-            document.getElementById('isEditMode').value = "false";
-            document.getElementById('newEquipId').value = ""; document.getElementById('newEquipId').readOnly = false; document.getElementById('newEquipId').classList.remove('bg-gray-200');
-            document.getElementById('newEquipName').value = ""; document.getElementById('newEquipQty').value = "1"; document.getElementById('newEquipCategory').value = "ทั่วไป"; toggleSubItems();
-            document.getElementById('equipPreview').src = "https://placehold.co/200x200?text=IMAGE"; base64EquipString = "";
-            let btn = document.getElementById('btnSaveEquip'); btn.innerText = "💾 บันทึกข้อมูล"; btn.classList.replace('bg-[#3b82f6]', 'bg-[#10b981]');
-            document.getElementById('btnCancelEdit').classList.add('hidden'); generateBarcodeLive();
+            document.getElementById('isEditMode').value = "false"; document.getElementById('newEquipId').value = ""; document.getElementById('newEquipId').readOnly = false; document.getElementById('newEquipId').classList.remove('bg-gray-200'); document.getElementById('newEquipName').value = ""; document.getElementById('newEquipQty').value = "1"; document.getElementById('newEquipCategory').value = "ทั่วไป"; toggleSubItems(); document.getElementById('equipPreview').src = "https://placehold.co/200x200?text=IMAGE"; base64EquipString = "";
+            let btn = document.getElementById('btnSaveEquip'); btn.innerText = "💾 บันทึกข้อมูล"; btn.classList.replace('bg-[#3b82f6]', 'bg-[#10b981]'); document.getElementById('btnCancelEdit').classList.add('hidden'); generateBarcodeLive();
         }
-
         async function saveNewEquipment() {
-            let isEdit = document.getElementById('isEditMode').value === "true";
-            let id = document.getElementById('newEquipId').value; let name = document.getElementById('newEquipName').value;
-            let cat = document.getElementById('newEquipCategory').value; let qty = document.getElementById('newEquipQty').value;
-            let subItems = document.getElementById('newSubItems').value;
+            let isEdit = document.getElementById('isEditMode').value === "true"; let id = document.getElementById('newEquipId').value; let name = document.getElementById('newEquipName').value; let cat = document.getElementById('newEquipCategory').value; let qty = document.getElementById('newEquipQty').value; let subItems = document.getElementById('newSubItems').value;
             if(!id || !name) return Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสและชื่อ', 'warning');
-            
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: (isEdit ? "updateEquipment" : "addEquipment"), equipmentId: id, name: name, category: cat, quantity: qty, subItems: subItems, imageBase64: base64EquipString });
             if(res.success) { Swal.fire('เจ๋งมาก!', res.message, 'success'); resetEquipForm(); loadEditEquipList(); } else Swal.fire('ผิดพลาด', res.message, 'error');
         }
-
-        function generateBarcodeLive() {
-            let id = document.getElementById('newEquipId').value; let name = document.getElementById('newEquipName').value;
-            if(id) { JsBarcode("#liveBarcode", id, { format: "CODE128", width: 2, height: 50, displayValue: true, fontSize: 16 }); document.getElementById('liveBarcodeLabel').innerText = name; }
-            else { document.getElementById('liveBarcode').innerHTML = ""; document.getElementById('liveBarcodeLabel').innerText = ""; }
-        }
-
+        function generateBarcodeLive() { let id = document.getElementById('newEquipId').value; let name = document.getElementById('newEquipName').value; if(id) { JsBarcode("#liveBarcode", id, { format: "CODE128", width: 2, height: 50, displayValue: true, fontSize: 16 }); document.getElementById('liveBarcodeLabel').innerText = name; } else { document.getElementById('liveBarcode').innerHTML = ""; document.getElementById('liveBarcodeLabel').innerText = ""; } }
         function downloadBarcode() {
-            const svgNode = document.getElementById('liveBarcode'); const equipId = document.getElementById('newEquipId').value || 'barcode';
-            if (!svgNode || svgNode.innerHTML === "") { Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสก่อนโหลดครับ', 'warning'); return; }
-            const s = new XMLSerializer(); const svgStr = s.serializeToString(svgNode);
-            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const img = new Image();
-            img.onload = function() {
-                canvas.width = img.width + 40; canvas.height = img.height + 40;
-                ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 20, 20);
-                const a = document.createElement('a'); a.download = `Barcode_${equipId}.png`; a.href = canvas.toDataURL('image/png');
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            };
+            const svgNode = document.getElementById('liveBarcode'); const equipId = document.getElementById('newEquipId').value || 'barcode'; if (!svgNode || svgNode.innerHTML === "") { Swal.fire('แจ้งเตือน', 'กรุณากรอกรหัสก่อนโหลดครับ', 'warning'); return; }
+            const s = new XMLSerializer(); const svgStr = s.serializeToString(svgNode); const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const img = new Image();
+            img.onload = function() { canvas.width = img.width + 40; canvas.height = img.height + 40; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 20, 20); const a = document.createElement('a'); a.download = `Barcode_${equipId}.png`; a.href = canvas.toDataURL('image/png'); document.body.appendChild(a); a.click(); document.body.removeChild(a); };
             img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
         }
-
         async function printAllBarcodes() {
             Swal.fire({ title: 'สร้างไฟล์ปริ้น...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             const res = await fetchAPI({ action: "getAllEquipment" });
@@ -623,10 +508,10 @@
                 let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); 
                 res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; });
                 res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); });
-                Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = '';
-                setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500);
+                Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500);
             } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
         }
     </script>
 </body>
 </html>
+
