@@ -275,9 +275,15 @@
         function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden-section')); 
             document.getElementById(tabId).classList.remove('hidden-section');
-            document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
+            document.querySelectorAll('.tab-btn').forEach(btn => { 
+                btn.classList.remove('bg-[#3b82f6]', 'text-white'); 
+                btn.classList.add('bg-white', 'text-black', 'hover:bg-[#fde047]'); // 🌟 เพิ่ม hover คืนให้ด้วย
+            });
             let activeBtn = document.getElementById('btn-' + tabId);
-            if(activeBtn) { activeBtn.classList.remove('bg-white', 'text-black', 'hover:bg-[#fde047]'); activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); }
+            if(activeBtn) { 
+                activeBtn.classList.remove('bg-white', 'text-black', 'hover:bg-[#fde047]'); 
+                activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); 
+        }
 
             if(tabId === 'dashboardTab') loadDashboard(); 
             if(tabId === 'catalogTab') loadCatalog();
@@ -333,7 +339,9 @@
             } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
         }
 
-        let globalCatalogData = []; let activeCategoryFilter = 'ALL';
+        let globalCatalogData = []; 
+        let activeCategoryFilter = 'ALL'; 
+        
         async function loadCatalog() {
             const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
             document.getElementById('searchCatalogInput').value = ""; document.getElementById('sortCatalogSelect').value = "name_asc"; document.getElementById('noSearchResult').classList.add('hidden'); 
@@ -342,12 +350,14 @@
             if(res.success && res.data.length > 0) { globalCatalogData = res.data; searchAndSortCatalog(); } 
             else { globalCatalogData = []; cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; }
         }
+        
         function filterByCategory(cat) {
             activeCategoryFilter = cat;
             document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
             let activeBtn = document.getElementById('cat-btn-' + cat); if(activeBtn) { activeBtn.classList.remove('bg-white', 'text-black'); activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); }
             searchAndSortCatalog();
         }
+        
         function searchAndSortCatalog() {
             if (globalCatalogData.length === 0) return;
             let searchText = document.getElementById('searchCatalogInput').value.toLowerCase(); let sortType = document.getElementById('sortCatalogSelect').value;
@@ -426,10 +436,24 @@
                 cont.innerHTML = '';
                 res.data.forEach(task => {
                     let actionBtn = ""; let targetStatus = ""; let color = "";
-                    if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม (สแกน)"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
-                    if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับเข้าคลัง"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
-                    if(task.status === "รอผู้ยืมมารับ" && task.studentId === currentUser.id) { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; }
-                    if(task.status === "ถูกยืม" && task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; }
+                    
+                    if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { 
+                        actionBtn = "📦 จัดเตรียม (สแกน)"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; 
+                    }
+                    
+                    else if(task.status === "รอผู้ยืมมารับ") { 
+                        if (task.studentId === currentUser.id) { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; }
+                        else if (currentUser.role === "Staff") { actionBtn = "📤 สแกนจ่ายของให้ นศ."; targetStatus = "ถูกยืม"; color = "bg-[#0ea5e9]"; } // ปุ่มสีฟ้าอ่อน สำหรับ Staff
+                    }
+                    
+                    else if(task.status === "ถูกยืม") { 
+                        if (task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; }
+                        else if (currentUser.role === "Staff") { actionBtn = "📥 สแกนรับคืนแทน นศ."; targetStatus = "รอตรวจสอบ"; color = "bg-[#ea580c]"; } // ปุ่มสีส้มเข้ม สำหรับ Staff
+                    }
+                    
+                    else if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { 
+                        actionBtn = "✅ ตรวจรับเข้าคลัง"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; 
+                    }
 
                     if(actionBtn !== "") {
                         cont.innerHTML += `<div class="card-brutal p-5 bg-white flex flex-col justify-between"><div class="mb-4"><span class="bg-black text-white font-bold px-2 py-1 rounded text-xs">Ref: ${task.txId.substring(0,12)}...</span><h4 class="font-black text-2xl text-gray-900 mt-3">${task.name}</h4><p class="font-bold text-gray-600 mt-1">ผู้จอง: <span class="text-blue-600">${task.studentId}</span></p></div><button onclick="openScannerTask('${task.txId}', '${task.barcode}', '${task.name}', '${task.subItems}', '${targetStatus}')" class="w-full ${color} text-white py-3 rounded-xl font-black text-xl btn-brutal">${actionBtn}</button></div>`;
@@ -438,32 +462,59 @@
                 if(cont.innerHTML === '') cont.innerHTML = '<p class="col-span-2 text-center py-8 font-black text-2xl bg-white card-brutal">🎉 งานหมดแล้วจ้า ว่าง!</p>';
             } else cont.innerHTML = '<p class="col-span-2 text-center py-8 font-black text-2xl bg-white card-brutal">🎉 งานหมดแล้วจ้า ว่าง!</p>';
         }
-
         function openScannerTask(txId, mainBarcode, equipName, subItemsStr, toStatus) {
-            let requiredItems = []; if (subItemsStr && subItemsStr.trim() !== "") requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase()); else requiredItems = [mainBarcode.toUpperCase()]; 
+            let requiredItems = []; 
+            if (subItemsStr && subItemsStr.trim() !== "") requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase()); 
+            else requiredItems = [mainBarcode.toUpperCase()]; 
+            
             currentScanTask = { txId: txId, mainBarcode: mainBarcode, requiredItems: requiredItems, scannedItems: [], toStatus: toStatus };
-            let html = `<div class="text-left mb-4"><p class="font-black text-xl text-blue-600">${equipName}</p><p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p><div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100">${requiredItems.map(item => `<div id="check-${item}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item}</div>`).join('')}</div></div><input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off"><p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>`;
+
+            let html = `
+                <div class="text-left mb-4">
+                    <p class="font-black text-xl text-blue-600">${equipName}</p>
+                    <p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p>
+                    <div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100">
+                        ${requiredItems.map(item => `<div id="check-${item}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item}</div>`).join('')}
+                    </div>
+                </div>
+                <input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off">
+                <p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>
+            `;
+
             Swal.fire({
-                title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก', customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
+                title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก', 
+                customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
                 didOpen: () => { 
                     let input = document.getElementById('liveScannerInput'); input.focus();
                     input.addEventListener('keypress', function(e) {
                         if (e.key === 'Enter') {
-                            e.preventDefault(); let val = input.value.trim().toUpperCase(); input.value = ""; let feedback = document.getElementById('scanFeedback'); feedback.innerText = "";
+                            e.preventDefault(); let val = input.value.trim().toUpperCase(); input.value = ""; 
+                            let feedback = document.getElementById('scanFeedback'); feedback.innerText = "";
+                            
                             if (currentScanTask.requiredItems.includes(val) && !currentScanTask.scannedItems.includes(val)) {
-                                currentScanTask.scannedItems.push(val); let box = document.getElementById(`check-${val}`); box.className = "font-black text-white bg-[#10b981] border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"; box.innerHTML = `✅ สแกนแล้ว: ${val}`;
+                                currentScanTask.scannedItems.push(val); 
+                                let box = document.getElementById(`check-${val}`); 
+                                box.className = "font-black text-white bg-[#10b981] border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"; 
+                                box.innerHTML = `✅ สแกนแล้ว: ${val}`;
+                                
                                 if (currentScanTask.scannedItems.length === currentScanTask.requiredItems.length) {
                                     Swal.fire({title: 'ครบถ้วน!', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
                                     fetchAPI({action: "updateTxStatus", txId: currentScanTask.txId, barcode: currentScanTask.mainBarcode, toStatus: currentScanTask.toStatus})
                                     .then(res => { 
                                         if(res.success) { 
                                             Swal.fire('เยี่ยมมาก!', res.message, 'success'); 
-                                            loadTasks(); 
+                                            loadTasks();
                                             updateBadges();
-                                        } else Swal.fire('ผิดพลาด', res.message, 'error'); 
+                                        } else {
+                                            Swal.fire('ผิดพลาด', res.message, 'error'); 
+                                        }
                                     });
                                 }
-                            } else if (currentScanTask.scannedItems.includes(val)) { feedback.innerText = "❌ ยิงซ้ำแล้วจ้า"; } else { feedback.innerText = "❌ รหัสผิดชิ้น!"; }
+                            } else if (currentScanTask.scannedItems.includes(val)) { 
+                                feedback.innerText = "❌ ยิงซ้ำแล้วจ้า"; 
+                            } else { 
+                                feedback.innerText = "❌ รหัสผิดชิ้น!"; 
+                            }
                         }
                     });
                 }
@@ -514,4 +565,5 @@
     </script>
 </body>
 </html>
+
 
