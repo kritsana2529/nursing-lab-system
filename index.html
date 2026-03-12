@@ -365,17 +365,17 @@
             if (globalCatalogData.length === 0) return;
             let searchText = document.getElementById('searchCatalogInput').value.toLowerCase(); let sortType = document.getElementById('sortCatalogSelect').value;
             let filteredData = globalCatalogData.filter(item => {
-                let matchText = item.name.toLowerCase().includes(searchText) || item.id.toLowerCase().includes(searchText);
+                let matchText = String(item.name || "").toLowerCase().includes(searchText) || String(item.id || "").toLowerCase().includes(searchText);
                 let matchCat = (activeCategoryFilter === 'ALL') || (item.category === activeCategoryFilter);
                 return matchText && matchCat;
             });
             filteredData.sort((a, b) => {
-                if (sortType === "name_asc") return String(a.name).localeCompare(String(b.name), 'th');
-                if (sortType === "name_desc") return String(b.name).localeCompare(String(a.name), 'th');
-                if (sortType === "id_asc") return String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' });
-                if (sortType === "id_desc") return String(b.id).localeCompare(String(a.id), undefined, { numeric: true, sensitivity: 'base' });
-                if (sortType === "qty_desc") return parseInt(b.qty) - parseInt(a.qty);
-                if (sortType === "qty_asc") return parseInt(a.qty) - parseInt(b.qty);
+                if (sortType === "name_asc") return String(a.name || "").localeCompare(String(b.name || ""), 'th');
+                if (sortType === "name_desc") return String(b.name || "").localeCompare(String(a.name || ""), 'th');
+                if (sortType === "id_asc") return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: 'base' });
+                if (sortType === "id_desc") return String(b.id || "").localeCompare(String(a.id || ""), undefined, { numeric: true, sensitivity: 'base' });
+                if (sortType === "qty_desc") return parseInt(b.qty || 0) - parseInt(a.qty || 0);
+                if (sortType === "qty_asc") return parseInt(a.qty || 0) - parseInt(b.qty || 0);
                 return 0;
             });
             const cont = document.getElementById('catalogContainer'); cont.innerHTML = '';
@@ -393,7 +393,6 @@
             if (form) { Swal.fire({ title: 'ส่งคำขอ...', didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId, pickupDate: form.pickup, returnDate: form.return }); if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); loadCatalog(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); }
         }
 
-        // 🌟 6. รายการจองของฉัน
         async function loadMyBookings() {
             const tbody = document.getElementById('myBookingsBody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
             const res = await fetchAPI({ action: "getMyBookings", studentId: currentUser.id });
@@ -403,7 +402,6 @@
         }
         async function cancelBooking(txId) { Swal.fire({ title: 'เอาจริงดิ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่ ยกเลิกเลย!', cancelButtonText: 'เปลี่ยนใจ' }).then(async (r) => { if (r.isConfirmed) { Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id }); if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); } }); }
 
-        // 🌟 7. ระบบคิวงานสแกน (รองรับของซ้ำในเซ็ต)
         async function loadTasks() {
             const cont = document.getElementById('tasksContainer'); cont.innerHTML = '<p class="col-span-2 text-center py-4 font-bold text-xl">กำลังดึงคิวงาน...</p>';
             const res = await fetchAPI({ action: "getTasks", role: currentUser.role, studentId: currentUser.id });
@@ -448,7 +446,6 @@
             });
         }
 
-        // 🌟 8. จัดการคลัง & Autocomplete & บาร์โค้ด
         async function loadEditEquipList() {
             const list = document.getElementById('editEquipList'); list.innerHTML = '<li class="p-3 text-center font-bold">กำลังโหลด...</li>';
             document.getElementById('searchEditEquipInput').value = ""; document.getElementById('sortEditEquipSelect').value = "id_asc";
@@ -459,10 +456,15 @@
         function searchAndSortEditEquip() {
             if (globalEditEquipData.length === 0) return;
             let searchText = document.getElementById('searchEditEquipInput').value.toLowerCase(); let sortType = document.getElementById('sortEditEquipSelect').value;
-            let filteredData = globalEditEquipData.filter(item => { return item.name.toLowerCase().includes(searchText) || item.id.toLowerCase().includes(searchText); });
+            let filteredData = globalEditEquipData.filter(item => { 
+                return String(item.name || "").toLowerCase().includes(searchText) || String(item.id || "").toLowerCase().includes(searchText); 
+            });
             filteredData.sort((a, b) => {
-                if (sortType === "name_asc") return String(a.name).localeCompare(String(b.name), 'th'); if (sortType === "name_desc") return String(b.name).localeCompare(String(a.name), 'th');
-                if (sortType === "id_asc") return String(a.id).localeCompare(String(b.id), undefined, { numeric: true, sensitivity: 'base' }); if (sortType === "id_desc") return String(b.id).localeCompare(String(a.id), undefined, { numeric: true, sensitivity: 'base' }); return 0;
+                if (sortType === "name_asc") return String(a.name || "").localeCompare(String(b.name || ""), 'th'); 
+                if (sortType === "name_desc") return String(b.name || "").localeCompare(String(a.name || ""), 'th');
+                if (sortType === "id_asc") return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: 'base' }); 
+                if (sortType === "id_desc") return String(b.id || "").localeCompare(String(a.id || ""), undefined, { numeric: true, sensitivity: 'base' }); 
+                return 0;
             });
             const list = document.getElementById('editEquipList'); list.innerHTML = '';
             if (filteredData.length === 0) { list.innerHTML = '<li class="p-3 text-center font-bold text-red-500">❌ ไม่พบอุปกรณ์ที่ค้นหา</li>'; } else {
@@ -481,7 +483,10 @@
         function removeSubItem(index) { selectedSubItems.splice(index, 1); renderSelectedSubItems(); }
         function handleSubItemSearch() {
             const input = document.getElementById('searchSubItemInput').value.toLowerCase(); const dropdown = document.getElementById('subItemDropdown');
-            let filtered = globalEditEquipData; if (input) { filtered = globalEditEquipData.filter(item => item.name.toLowerCase().includes(input) || item.id.toLowerCase().includes(input)); }
+            let filtered = globalEditEquipData; 
+            if (input) { 
+                filtered = globalEditEquipData.filter(item => String(item.name || "").toLowerCase().includes(input) || String(item.id || "").toLowerCase().includes(input)); 
+            }
             dropdown.innerHTML = '';
             if (filtered.length === 0) { dropdown.innerHTML = '<li class="p-3 text-center font-bold text-red-500">❌ ไม่พบอุปกรณ์นี้ในคลัง</li>'; } else {
                 filtered.slice(0, 30).forEach(item => { dropdown.innerHTML += `<li class="p-3 border-b-2 border-black hover:bg-[#bae6fd] cursor-pointer flex justify-between items-center transition" onclick="addSubItem('${item.id}')"><span class="font-bold text-gray-800 text-sm">${item.name}</span><span class="font-black text-blue-600 text-xs bg-white px-2 py-1 border-2 border-black rounded">${item.id}</span></li>`; });
@@ -531,6 +536,7 @@
     </script>
 </body>
 </html>
+
 
 
 
