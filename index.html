@@ -269,76 +269,165 @@
                 if (action === "login") {
                     const userRef = db.collection("users").doc(payload.username);
                     const doc = await userRef.get();
-                    
                     if (doc.exists && doc.data().password === payload.password) {
                         let data = doc.data();
-                        // 🌟 แก้บั๊กแท็บหาย: บังคับแปลงสิทธิ์ให้ถูกต้องเสมอ (ถ้าลืมใส่ ให้ถือว่าเป็น Staff ไปก่อน)
                         let userRole = data.role;
-                        if (!userRole || userRole.toLowerCase() === "staff" || userRole.toLowerCase() === "admin") {
-                            userRole = "Staff"; 
-                        } else if (userRole.toLowerCase() === "student") {
-                            userRole = "Student";
-                        }
-
+                        if (!userRole || userRole.toLowerCase() === "staff" || userRole.toLowerCase() === "admin") userRole = "Staff"; 
+                        else if (userRole.toLowerCase() === "student") userRole = "Student";
                         return { success: true, data: { name: data.name || "อ. แอดมิน", role: userRole, picUrl: data.picUrl || "" } };
                     }
                     return { success: false, message: "รหัสผู้ใช้ หรือ รหัสผ่านไม่ถูกต้องครับ" };
                 }
 
-                // --- 🏷️ ดึงข้อมูลคลัง (สำหรับหน้าจัดการคลัง) ---
-                if (action === "getAllEquipment") {
+                // --- 👤 อัปเดตโปรไฟล์ ---
+                if (action === "getUserProfile") {
+                    const doc = await db.collection("users").doc(payload.username).get();
+                    if(doc.exists) return { success: true, data: doc.data() };
+                    return { success: false, message: "ไม่พบข้อมูลโปรไฟล์" };
+                }
+                if (action === "updateUserProfile") {
+                    let updateData = { phone: payload.phone };
+                    if(payload.password) updateData.password = payload.password;
+                    if(payload.imageBase64) updateData.picUrl = payload.imageBase64;
+                    await db.collection("users").doc(payload.username).update(updateData);
+                    return { success: true, message: "อัปเดตโปรไฟล์เรียบร้อย!", data: { newPicUrl: payload.imageBase64 } };
+                }
+
+                // --- 🏷️ จัดการคลังอุปกรณ์ (ดึง/เพิ่ม/แก้ไข) ---
+                if (action === "getAllEquipment" || action === "getAvailableEquipments") {
                     const snapshot = await db.collection("equipments").get();
                     let items = [];
                     snapshot.forEach(doc => items.push(doc.data()));
                     return { success: true, data: items };
                 }
-
-                // --- 🛒 ดึงข้อมูลคลัง (สำหรับหน้าแคตตาล็อก) ---
-                if (action === "getAvailableEquipments") {
-                    const snapshot = await db.collection("equipments").get();
-                    let items = [];
-                    snapshot.forEach(doc => items.push(doc.data()));
-                    return { success: true, data: items };
-                }
-
-                // --- ➕ เพิ่มอุปกรณ์ใหม่ ---
-                if (action === "addEquipment") {
+                if (action === "addEquipment" || action === "updateEquipment") {
                     await db.collection("equipments").doc(payload.equipmentId).set({
-                        id: payload.equipmentId,
-                        name: payload.name,
-                        category: payload.category,
-                        qty: parseInt(payload.quantity),
-                        totalQty: parseInt(payload.quantity),
-                        subItems: payload.subItems || "",
+                        id: payload.equipmentId, name: payload.name, category: payload.category,
+                        qty: parseInt(payload.quantity), totalQty: parseInt(payload.quantity),
+                        subItems: payload.subItems || "", borrows: 0, // ค่าเริ่มต้นยอดถูกยืม
                         picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
-                    });
-                    return { success: true, message: "เพิ่มอุปกรณ์ลง Firebase เรียบร้อย!" };
+                    }, { merge: true }); // ใช้ merge: true เพื่อให้อัปเดตได้โดยไม่ลบยอด borrows เก่า
+                    return { success: true, message: "บันทึกข้อมูลอุปกรณ์เรียบร้อย!" };
                 }
 
-                // --- ✏️ อัปเดตอุปกรณ์ ---
-                if (action === "updateEquipment") {
-                    await db.collection("equipments").doc(payload.equipmentId).update({
-                        name: payload.name,
-                        category: payload.category,
-                        qty: parseInt(payload.quantity), // ของว่าง
-                        totalQty: parseInt(payload.quantity), // ของทั้งหมด
-                        subItems: payload.subItems || "",
-                        picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
+                // --- 📌 ระบบยืมอุปกรณ์ (จอง) ---
+                if (action === "studentRequest") {
+                    const equipRef = db.collection("equipments").doc(payload.barcode);
+                    const equipDoc = await equipRef.get();
+                    
+                    if (!equipDoc.exists || equipDoc.data().qty <= 0) {
+                        return { success: false, message: "อุปกรณ์หมด หรือไม่มีรหัสนี้ในคลังครับ" };
+                    }
+                    
+                    let equipData = equipDoc.data();
+                    // 1. ตัดสต๊อกและเพิ่มยอดฮิต
+                    await equipRef.update({ 
+                        qty: equipData.qty - 1, 
+                        borrows: (equipData.borrows || 0) + 1 
                     });
-                    return { success: true, message: "อัปเดตข้อมูลใน Firebase เรียบร้อย!" };
+
+                    // 2. สร้างคิวงาน (Transaction)
+                    let txId = "TX-" + new Date().getTime(); // สร้างรหัสจากเวลาปัจจุบัน
+                    await db.collection("transactions").doc(txId).set({
+                        txId: txId, studentId: payload.studentId, barcode: payload.barcode,
+                        name: equipData.name, subItems: equipData.subItems || "",
+                        pickupDate: payload.pickupDate, returnDate: payload.returnDate,
+                        status: "รอจัดเตรียม", timestamp: new Date().toISOString()
+                    });
+                    
+                    return { success: true, message: "จองอุปกรณ์เรียบร้อยแล้ว!" };
                 }
 
-                // --- 🔴 กันแอปพัง: ส่งค่าว่างให้เมนูอื่นๆ ที่ยังไม่ได้ทำ ---
-                if (action === "getBadges") return { success: true, data: { myBookings: 0, tasks: 0 } };
-                if (action === "getDashboard") return { success: true, data: [] };
-                if (action === "getTasks") return { success: true, data: [] };
-                if (action === "getMyBookings") return { success: true, data: [] };
+                // --- 📦 ของฉัน (รายการที่ยืมไว้) ---
+                if (action === "getMyBookings") {
+                    const snapshot = await db.collection("transactions").where("studentId", "==", payload.studentId).get();
+                    let items = [];
+                    snapshot.forEach(doc => {
+                        let data = doc.data();
+                        if (data.status !== "ยกเลิก" && data.status !== "คืนแล้ว") items.push(data); // ไม่โชว์อันที่จบไปแล้ว
+                    });
+                    return { success: true, data: items };
+                }
 
-                return { success: false, message: "กำลังย้ายระบบ '" + action + "' มา Firebase ครับ" };
+                // --- ❌ ยกเลิกการจอง ---
+                if (action === "cancelBooking") {
+                    const txRef = db.collection("transactions").doc(payload.txId);
+                    const txDoc = await txRef.get();
+                    if (txDoc.exists) {
+                        let txData = txDoc.data();
+                        if (txData.status === "รอจัดเตรียม" || txData.status === "รอผู้ยืมมารับ") {
+                            await txRef.update({ status: "ยกเลิก" }); // เปลี่ยนสถานะ
+                            // คืนของเข้าคลัง (+1)
+                            const equipRef = db.collection("equipments").doc(txData.barcode);
+                            const equipDoc = await equipRef.get();
+                            if(equipDoc.exists) await equipRef.update({ qty: equipDoc.data().qty + 1 });
+                            return { success: true, message: "ยกเลิกและคืนยอดเข้าคลังแล้ว" };
+                        }
+                    }
+                    return { success: false, message: "ไม่สามารถยกเลิกได้ครับ" };
+                }
+
+                // --- 📋 คิวงานสแกน (แยกระดับ Staff และ Student) ---
+                if (action === "getTasks") {
+                    const snapshot = await db.collection("transactions").get();
+                    let tasks = [];
+                    snapshot.forEach(doc => {
+                        let txData = doc.data();
+                        let isActive = (txData.status === "รอจัดเตรียม" || txData.status === "รอผู้ยืมมารับ" || txData.status === "ถูกยืม" || txData.status === "รอตรวจสอบ");
+                        let isMatch = false;
+                        
+                        if (payload.role === "Staff" && isActive) isMatch = true;
+                        else if (payload.role === "Student" && txData.studentId === payload.studentId && isActive) isMatch = true;
+
+                        if (isMatch) tasks.push(txData);
+                    });
+                    return { success: true, data: tasks };
+                }
+
+                // --- ✅ อัปเดตสถานะตอนสแกนเสร็จ ---
+                if (action === "updateTxStatus") {
+                    const txRef = db.collection("transactions").doc(payload.txId);
+                    await txRef.update({ status: payload.toStatus });
+
+                    // ถ้าสถานะจบที่ "คืนแล้ว" ให้คืนยอดเข้าคลัง
+                    if (payload.toStatus === "คืนแล้ว") {
+                        const equipRef = db.collection("equipments").doc(payload.barcode);
+                        const equipDoc = await equipRef.get();
+                        if (equipDoc.exists) await equipRef.update({ qty: equipDoc.data().qty + 1 });
+                    }
+                    return { success: true, message: "อัปเดตสถานะเป็น " + payload.toStatus + " แล้ว!" };
+                }
+
+                // --- 🔴 ตัวเลขแจ้งเตือน (Badges) แบบ Real-time ---
+                if (action === "getBadges") {
+                    const snapshot = await db.collection("transactions").get();
+                    let myBookingsCount = 0; let tasksCount = 0;
+                    snapshot.forEach(doc => {
+                        let txData = doc.data(); let txStatus = txData.status;
+                        if (txData.studentId === payload.studentId && (txStatus === "รอจัดเตรียม" || txStatus === "รอผู้ยืมมารับ" || txStatus === "ถูกยืม")) myBookingsCount++;
+                        if (payload.role === "Staff" && (txStatus === "รอจัดเตรียม" || txStatus === "รอตรวจสอบ")) tasksCount++;
+                        if (txData.studentId === payload.studentId && (txStatus === "รอผู้ยืมมารับ" || txStatus === "ถูกยืม")) tasksCount++;
+                    });
+                    return { success: true, data: { myBookings: myBookingsCount, tasks: tasksCount } };
+                }
+
+                // --- 📊 แดชบอร์ด 10 อันดับยอดฮิต ---
+                if (action === "getDashboard") {
+                    const snapshot = await db.collection("equipments").get();
+                    let items = [];
+                    snapshot.forEach(doc => {
+                        let d = doc.data();
+                        items.push({ id: d.id, name: d.name, borrows: d.borrows || 0, available: d.qty });
+                    });
+                    items.sort((a, b) => b.borrows - a.borrows); // จัดเรียงมากไปน้อย
+                    return { success: true, data: items.slice(0, 10) }; // ตัดเอาแค่ 10 อันดับ
+                }
+
+                return { success: false, message: "ไม่รู้จักคำสั่ง: " + action };
 
             } catch(error) {
                 console.error("Firebase Error: ", error);
-                return { success: false, message: "การเชื่อมต่อฐานข้อมูลมีปัญหา: " + error.message };
+                return { success: false, message: "ข้อผิดพลาดฐานข้อมูล: " + error.message };
             }
         }
 
