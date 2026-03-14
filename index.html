@@ -265,30 +265,80 @@
             try {
                 const action = payload.action;
 
+                // --- 🔐 ระบบเข้าสู่ระบบ ---
                 if (action === "login") {
                     const userRef = db.collection("users").doc(payload.username);
                     const doc = await userRef.get();
                     
                     if (doc.exists && doc.data().password === payload.password) {
                         let data = doc.data();
-                        return { success: true, data: { name: data.name, role: data.role, picUrl: data.picUrl || "" } };
+                        // 🌟 แก้บั๊กแท็บหาย: บังคับแปลงสิทธิ์ให้ถูกต้องเสมอ (ถ้าลืมใส่ ให้ถือว่าเป็น Staff ไปก่อน)
+                        let userRole = data.role;
+                        if (!userRole || userRole.toLowerCase() === "staff" || userRole.toLowerCase() === "admin") {
+                            userRole = "Staff"; 
+                        } else if (userRole.toLowerCase() === "student") {
+                            userRole = "Student";
+                        }
+
+                        return { success: true, data: { name: data.name || "อ. แอดมิน", role: userRole, picUrl: data.picUrl || "" } };
                     }
                     return { success: false, message: "รหัสผู้ใช้ หรือ รหัสผ่านไม่ถูกต้องครับ" };
                 }
 
-                if (action === "getBadges") {
-                    return { success: true, data: { myBookings: 0, tasks: 0 } };
+                // --- 🏷️ ดึงข้อมูลคลัง (สำหรับหน้าจัดการคลัง) ---
+                if (action === "getAllEquipment") {
+                    const snapshot = await db.collection("equipments").get();
+                    let items = [];
+                    snapshot.forEach(doc => items.push(doc.data()));
+                    return { success: true, data: items };
                 }
 
-                if (action === "getDashboard") {
-                    return { success: true, data: [] };
+                // --- 🛒 ดึงข้อมูลคลัง (สำหรับหน้าแคตตาล็อก) ---
+                if (action === "getAvailableEquipments") {
+                    const snapshot = await db.collection("equipments").get();
+                    let items = [];
+                    snapshot.forEach(doc => items.push(doc.data()));
+                    return { success: true, data: items };
                 }
 
-                return { success: false, message: "ฟังก์ชัน '" + action + "' กำลังทยอยย้ายมา Firebase ครับ!" };
+                // --- ➕ เพิ่มอุปกรณ์ใหม่ ---
+                if (action === "addEquipment") {
+                    await db.collection("equipments").doc(payload.equipmentId).set({
+                        id: payload.equipmentId,
+                        name: payload.name,
+                        category: payload.category,
+                        qty: parseInt(payload.quantity),
+                        totalQty: parseInt(payload.quantity),
+                        subItems: payload.subItems || "",
+                        picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
+                    });
+                    return { success: true, message: "เพิ่มอุปกรณ์ลง Firebase เรียบร้อย!" };
+                }
+
+                // --- ✏️ อัปเดตอุปกรณ์ ---
+                if (action === "updateEquipment") {
+                    await db.collection("equipments").doc(payload.equipmentId).update({
+                        name: payload.name,
+                        category: payload.category,
+                        qty: parseInt(payload.quantity), // ของว่าง
+                        totalQty: parseInt(payload.quantity), // ของทั้งหมด
+                        subItems: payload.subItems || "",
+                        picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
+                    });
+                    return { success: true, message: "อัปเดตข้อมูลใน Firebase เรียบร้อย!" };
+                }
+
+                // --- 🔴 กันแอปพัง: ส่งค่าว่างให้เมนูอื่นๆ ที่ยังไม่ได้ทำ ---
+                if (action === "getBadges") return { success: true, data: { myBookings: 0, tasks: 0 } };
+                if (action === "getDashboard") return { success: true, data: [] };
+                if (action === "getTasks") return { success: true, data: [] };
+                if (action === "getMyBookings") return { success: true, data: [] };
+
+                return { success: false, message: "กำลังย้ายระบบ '" + action + "' มา Firebase ครับ" };
 
             } catch(error) {
                 console.error("Firebase Error: ", error);
-                return { success: false, message: "การเชื่อมต่อฐานข้อมูลมีปัญหา" };
+                return { success: false, message: "การเชื่อมต่อฐานข้อมูลมีปัญหา: " + error.message };
             }
         }
 
