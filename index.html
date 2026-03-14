@@ -212,6 +212,9 @@
                             <button onclick="window.print()" class="bg-[#3b82f6] text-white py-2 rounded-lg font-black btn-brutal">🖨️ ปริ้น 1 ชิ้น</button>
                             <button onclick="downloadBarcode()" class="bg-[#10b981] text-white py-2 rounded-lg font-black btn-brutal">📥 โหลดรูป PNG</button>
                             <button onclick="printAllBarcodes()" class="col-span-2 bg-[#8b5cf6] text-white py-3 rounded-lg font-black btn-brutal text-lg">📑 ปริ้นทั้งหมด (Batch Print)</button>
+                            <button onclick="migrateDataToFirebase()" class="col-span-2 bg-purple-600 text-white py-3 rounded-lg font-black btn-brutal text-lg mt-4">
+                                🧲 ดูดข้อมูลจาก Google Sheet เข้า Firebase
+                            </button>
                         </div>
                     </div>
                     
@@ -265,7 +268,6 @@
             try {
                 const action = payload.action;
 
-                // --- 🔐 ระบบเข้าสู่ระบบ ---
                 if (action === "login") {
                     const userRef = db.collection("users").doc(payload.username);
                     const doc = await userRef.get();
@@ -279,7 +281,6 @@
                     return { success: false, message: "รหัสผู้ใช้ หรือ รหัสผ่านไม่ถูกต้องครับ" };
                 }
 
-                // --- 👤 อัปเดตโปรไฟล์ ---
                 if (action === "getUserProfile") {
                     const doc = await db.collection("users").doc(payload.username).get();
                     if(doc.exists) return { success: true, data: doc.data() };
@@ -293,7 +294,6 @@
                     return { success: true, message: "อัปเดตโปรไฟล์เรียบร้อย!", data: { newPicUrl: payload.imageBase64 } };
                 }
 
-                // --- 🏷️ จัดการคลังอุปกรณ์ (ดึง/เพิ่ม/แก้ไข) ---
                 if (action === "getAllEquipment" || action === "getAvailableEquipments") {
                     const snapshot = await db.collection("equipments").get();
                     let items = [];
@@ -304,13 +304,12 @@
                     await db.collection("equipments").doc(payload.equipmentId).set({
                         id: payload.equipmentId, name: payload.name, category: payload.category,
                         qty: parseInt(payload.quantity), totalQty: parseInt(payload.quantity),
-                        subItems: payload.subItems || "", borrows: 0, // ค่าเริ่มต้นยอดถูกยืม
+                        subItems: payload.subItems || "", borrows: 0,
                         picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
-                    }, { merge: true }); // ใช้ merge: true เพื่อให้อัปเดตได้โดยไม่ลบยอด borrows เก่า
+                    }, { merge: true });
                     return { success: true, message: "บันทึกข้อมูลอุปกรณ์เรียบร้อย!" };
                 }
 
-                // --- 📌 ระบบยืมอุปกรณ์ (จอง) ---
                 if (action === "studentRequest") {
                     const equipRef = db.collection("equipments").doc(payload.barcode);
                     const equipDoc = await equipRef.get();
@@ -320,14 +319,12 @@
                     }
                     
                     let equipData = equipDoc.data();
-                    // 1. ตัดสต๊อกและเพิ่มยอดฮิต
                     await equipRef.update({ 
                         qty: equipData.qty - 1, 
                         borrows: (equipData.borrows || 0) + 1 
                     });
 
-                    // 2. สร้างคิวงาน (Transaction)
-                    let txId = "TX-" + new Date().getTime(); // สร้างรหัสจากเวลาปัจจุบัน
+                    let txId = "TX-" + new Date().getTime();
                     await db.collection("transactions").doc(txId).set({
                         txId: txId, studentId: payload.studentId, barcode: payload.barcode,
                         name: equipData.name, subItems: equipData.subItems || "",
@@ -338,26 +335,23 @@
                     return { success: true, message: "จองอุปกรณ์เรียบร้อยแล้ว!" };
                 }
 
-                // --- 📦 ของฉัน (รายการที่ยืมไว้) ---
                 if (action === "getMyBookings") {
                     const snapshot = await db.collection("transactions").where("studentId", "==", payload.studentId).get();
                     let items = [];
                     snapshot.forEach(doc => {
                         let data = doc.data();
-                        if (data.status !== "ยกเลิก" && data.status !== "คืนแล้ว") items.push(data); // ไม่โชว์อันที่จบไปแล้ว
+                        if (data.status !== "ยกเลิก" && data.status !== "คืนแล้ว") items.push(data);
                     });
                     return { success: true, data: items };
                 }
 
-                // --- ❌ ยกเลิกการจอง ---
                 if (action === "cancelBooking") {
                     const txRef = db.collection("transactions").doc(payload.txId);
                     const txDoc = await txRef.get();
                     if (txDoc.exists) {
                         let txData = txDoc.data();
                         if (txData.status === "รอจัดเตรียม" || txData.status === "รอผู้ยืมมารับ") {
-                            await txRef.update({ status: "ยกเลิก" }); // เปลี่ยนสถานะ
-                            // คืนของเข้าคลัง (+1)
+                            await txRef.update({ status: "ยกเลิก" });
                             const equipRef = db.collection("equipments").doc(txData.barcode);
                             const equipDoc = await equipRef.get();
                             if(equipDoc.exists) await equipRef.update({ qty: equipDoc.data().qty + 1 });
@@ -367,7 +361,6 @@
                     return { success: false, message: "ไม่สามารถยกเลิกได้ครับ" };
                 }
 
-                // --- 📋 คิวงานสแกน (แยกระดับ Staff และ Student) ---
                 if (action === "getTasks") {
                     const snapshot = await db.collection("transactions").get();
                     let tasks = [];
@@ -384,12 +377,10 @@
                     return { success: true, data: tasks };
                 }
 
-                // --- ✅ อัปเดตสถานะตอนสแกนเสร็จ ---
                 if (action === "updateTxStatus") {
                     const txRef = db.collection("transactions").doc(payload.txId);
                     await txRef.update({ status: payload.toStatus });
 
-                    // ถ้าสถานะจบที่ "คืนแล้ว" ให้คืนยอดเข้าคลัง
                     if (payload.toStatus === "คืนแล้ว") {
                         const equipRef = db.collection("equipments").doc(payload.barcode);
                         const equipDoc = await equipRef.get();
@@ -398,7 +389,6 @@
                     return { success: true, message: "อัปเดตสถานะเป็น " + payload.toStatus + " แล้ว!" };
                 }
 
-                // --- 🔴 ตัวเลขแจ้งเตือน (Badges) แบบ Real-time ---
                 if (action === "getBadges") {
                     const snapshot = await db.collection("transactions").get();
                     let myBookingsCount = 0; let tasksCount = 0;
@@ -411,7 +401,6 @@
                     return { success: true, data: { myBookings: myBookingsCount, tasks: tasksCount } };
                 }
 
-                // --- 📊 แดชบอร์ด 10 อันดับยอดฮิต ---
                 if (action === "getDashboard") {
                     const snapshot = await db.collection("equipments").get();
                     let items = [];
@@ -419,8 +408,8 @@
                         let d = doc.data();
                         items.push({ id: d.id, name: d.name, borrows: d.borrows || 0, available: d.qty });
                     });
-                    items.sort((a, b) => b.borrows - a.borrows); // จัดเรียงมากไปน้อย
-                    return { success: true, data: items.slice(0, 10) }; // ตัดเอาแค่ 10 อันดับ
+                    items.sort((a, b) => b.borrows - a.borrows);
+                    return { success: true, data: items.slice(0, 10) };
                 }
 
                 return { success: false, message: "ไม่รู้จักคำสั่ง: " + action };
@@ -452,7 +441,6 @@
             }; r.readAsDataURL(file);
         }
 
-        // 🌟 3. ระบบเมนู & Login
         function buildMenu() {
             const nav = document.getElementById('mainNav'); nav.innerHTML = '';
             const btnClass = "tab-btn relative flex-grow md:flex-1 py-4 bg-white text-black font-black text-lg border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#fde047] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all";
@@ -498,7 +486,6 @@
         }
         function logout() { location.reload(); }
 
-        // 🌟 4. Profile & Dashboard
         async function loadProfile() {
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() }); const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
             if(result.success) { document.getElementById('profilePhone').value = result.data.phone; document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; document.getElementById('profilePassword').value = ""; base64ProfileString = ""; Swal.close(); } else Swal.fire('ผิดพลาด', result.message, 'error');
@@ -516,7 +503,6 @@
             if(res.success && res.data.length > 0) { tbody.innerHTML = ''; res.data.forEach((item, index) => { let qtyClass = item.available > 0 ? "text-green-600 font-black" : "text-red-600 font-black"; tbody.innerHTML += `<tr class="hover:bg-gray-100 transition"><td class="text-center font-bold text-gray-400 text-lg">${index + 1}</td><td class="font-bold">${item.id}</td><td class="font-bold">${item.name}</td><td class="text-center font-black text-xl">${item.borrows}</td><td class="text-center text-xl ${qtyClass}">${item.available > 0 ? item.available : "หมด!"}</td></tr>`; }); } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
         }
 
-        // 🌟 5. แคตตาล็อก (Search & Sort)
         async function loadCatalog() {
             const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
             document.getElementById('searchCatalogInput').value = ""; document.getElementById('sortCatalogSelect').value = "name_asc"; document.getElementById('noSearchResult').classList.add('hidden'); 
@@ -707,6 +693,49 @@
         async function printAllBarcodes() {
             Swal.fire({ title: 'สร้างไฟล์ปริ้น...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) { let oldPc = document.getElementById('batch-print-area'); if(oldPc) oldPc.remove(); let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; }); res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); }); Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500); } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
+        }
+        async function migrateDataToFirebase() {
+            // นี่คือ URL เก่าของอาจารย์ที่ต่อกับ Google Sheets
+            const OLD_GAS_URL = "https://script.google.com/macros/s/AKfycbwfG4KMT1q1hurUKBCpcCTLVwe7Jvg0j278bwe5JEj21MrJnUHX4lTTNCNq94vZsucq/exec";
+            
+            Swal.fire({ title: 'กำลังดูดข้อมูล...', html: 'กรุณารอสักครู่ ห้ามปิดหน้านี้นะครับ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                // 1. ไปเคาะประตูเรียกข้อมูลจาก Google Sheets
+                const res = await fetch(OLD_GAS_URL, { 
+                    method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getAllEquipment" }) 
+                });
+                const result = await res.json();
+
+                if(result.success && result.data.length > 0) {
+                    let count = 0;
+                    
+                    // 2. เอาข้อมูลที่ได้ วนลูปยัดลง Firebase ทีละรายการ
+                    for(let item of result.data) {
+                        await db.collection("equipments").doc(item.id).set({
+                            id: item.id,
+                            name: item.name,
+                            category: item.category || "ทั่วไป",
+                            qty: parseInt(item.totalQty) || parseInt(item.qty) || 1, // ยึดของทั้งหมดเป็นหลัก
+                            totalQty: parseInt(item.totalQty) || parseInt(item.qty) || 1,
+                            subItems: item.subItems || "",
+                            picUrl: item.picUrl || "https://placehold.co/200x200?text=IMAGE",
+                            borrows: 0 // รีเซ็ตยอดการยืมเป็น 0 ใหม่
+                        });
+                        count++;
+                    }
+                    
+                    Swal.fire('สำเร็จยอดเยี่ยม!', `ดูดข้อมูลสำเร็จแล้วทั้งหมด ${count} รายการครับ!`, 'success').then(() => {
+                        loadEditEquipList(); // โหลดคลังใหม่ให้เห็นของที่ดูดมา
+                    });
+                } else {
+                    Swal.fire('แจ้งเตือน', 'ไม่พบข้อมูลใน Google Sheets เลยครับ', 'warning');
+                }
+            } catch(error) {
+                console.error(error);
+                Swal.fire('ผิดพลาด', 'เชื่อมต่อ Google Sheets ไม่สำเร็จ: ' + error.message, 'error');
+            }
         }
     </script>
 </body>
