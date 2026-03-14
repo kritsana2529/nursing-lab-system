@@ -12,6 +12,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
     <style>
         body { font-family: 'Kanit', sans-serif; background-color: #f0f4f8; }
@@ -238,8 +241,16 @@
     </div>
 
     <script>
-        // 🌟 1. ตั้งค่าและตัวแปรส่วนกลาง (แก้ไขการประกาศซ้ำซ้อนแล้ว)
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwfG4KMT1q1hurUKBCpcCTLVwe7Jvg0j278bwe5JEj21MrJnUHX4lTTNCNq94vZsucq/exec";
+        const firebaseConfig = {
+            apiKey: "AIzaSyCbOvcQEdGLroKtSG0J9RwJkIpCKG8Ifhw",
+            authDomain: "nursinglab-slc.firebaseapp.com",
+            projectId: "nursinglab-slc",
+            storageBucket: "nursinglab-slc.firebasestorage.app",
+            messagingSenderId: "14199241496",
+            appId: "1:14199241496:web:255a2da31f323a11033c6d"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
         let currentUser = { id: "", name: "", role: "", picUrl: "" };
         let base64ProfileString = ""; let base64EquipString = ""; 
@@ -250,10 +261,35 @@
         let globalEditEquipData = [];
         let selectedSubItems = [];
 
-        // 🌟 2. ฟังก์ชันพื้นฐานระบบ
         async function fetchAPI(payload) {
-            const res = await fetch(GAS_WEB_APP_URL, { method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
-            return await res.json();
+            try {
+                const action = payload.action;
+
+                if (action === "login") {
+                    const userRef = db.collection("users").doc(payload.username);
+                    const doc = await userRef.get();
+                    
+                    if (doc.exists && doc.data().password === payload.password) {
+                        let data = doc.data();
+                        return { success: true, data: { name: data.name, role: data.role, picUrl: data.picUrl || "" } };
+                    }
+                    return { success: false, message: "รหัสผู้ใช้ หรือ รหัสผ่านไม่ถูกต้องครับ" };
+                }
+
+                if (action === "getBadges") {
+                    return { success: true, data: { myBookings: 0, tasks: 0 } };
+                }
+
+                if (action === "getDashboard") {
+                    return { success: true, data: [] };
+                }
+
+                return { success: false, message: "ฟังก์ชัน '" + action + "' กำลังทยอยย้ายมา Firebase ครับ!" };
+
+            } catch(error) {
+                console.error("Firebase Error: ", error);
+                return { success: false, message: "การเชื่อมต่อฐานข้อมูลมีปัญหา" };
+            }
         }
 
         async function updateBadges() {
