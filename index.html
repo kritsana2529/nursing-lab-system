@@ -212,9 +212,6 @@
                             <button onclick="window.print()" class="bg-[#3b82f6] text-white py-2 rounded-lg font-black btn-brutal">🖨️ ปริ้น 1 ชิ้น</button>
                             <button onclick="downloadBarcode()" class="bg-[#10b981] text-white py-2 rounded-lg font-black btn-brutal">📥 โหลดรูป PNG</button>
                             <button onclick="printAllBarcodes()" class="col-span-2 bg-[#8b5cf6] text-white py-3 rounded-lg font-black btn-brutal text-lg">📑 ปริ้นทั้งหมด (Batch Print)</button>
-                            <button onclick="migrateDataToFirebase()" class="col-span-2 bg-purple-600 text-white py-3 rounded-lg font-black btn-brutal text-lg mt-4">
-                                🧲 ดูดข้อมูลจาก Google Sheet เข้า Firebase
-                            </button>
                         </div>
                     </div>
                     
@@ -693,50 +690,6 @@
         async function printAllBarcodes() {
             Swal.fire({ title: 'สร้างไฟล์ปริ้น...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) { let oldPc = document.getElementById('batch-print-area'); if(oldPc) oldPc.remove(); let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; }); res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); }); Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500); } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
-        }
-        async function migrateDataToFirebase() {
-            const OLD_GAS_URL = "https://script.google.com/macros/s/AKfycbwfG4KMT1q1hurUKBCpcCTLVwe7Jvg0j278bwe5JEj21MrJnUHX4lTTNCNq94vZsucq/exec";
-            
-            Swal.fire({ title: 'กำลังดูดข้อมูล...', html: 'กรุณารอสักครู่ ห้ามปิดหน้านี้นะครับ', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-            try {
-                const res = await fetch(OLD_GAS_URL, { 
-                    method: 'POST', redirect: 'follow', headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "getAllEquipment" }) 
-                });
-                const result = await res.json();
-
-                if(result.success && result.data.length > 0) {
-                    let count = 0;
-                    
-                    for(let item of result.data) {
-                        // 🌟 แก้บั๊กตรงนี้: บังคับให้รหัสเป็น String เสมอ Firebase จะได้ไม่งอแง
-                        let safeId = String(item.id).trim();
-                        if (safeId === "") safeId = "NO-ID-" + count; // เผื่อเผลอเว้นช่องรหัสว่างไว้ใน Sheet
-
-                        await db.collection("equipments").doc(safeId).set({
-                            id: safeId,
-                            name: String(item.name || ""),
-                            category: item.category || "ทั่วไป",
-                            qty: parseInt(item.totalQty) || parseInt(item.qty) || 1, 
-                            totalQty: parseInt(item.totalQty) || parseInt(item.qty) || 1,
-                            subItems: item.subItems || "",
-                            picUrl: item.picUrl || "https://placehold.co/200x200?text=IMAGE",
-                            borrows: 0 
-                        });
-                        count++;
-                    }
-                    
-                    Swal.fire('สำเร็จยอดเยี่ยม!', `ดูดข้อมูลสำเร็จแล้วทั้งหมด ${count} รายการครับ!`, 'success').then(() => {
-                        loadEditEquipList(); 
-                    });
-                } else {
-                    Swal.fire('แจ้งเตือน', 'ไม่พบข้อมูลใน Google Sheets เลยครับ', 'warning');
-                }
-            } catch(error) {
-                console.error(error);
-                Swal.fire('ผิดพลาด', 'เชื่อมต่อ Google Sheets ไม่สำเร็จ: ' + error.message, 'error');
-            }
         }
     </script>
 </body>
