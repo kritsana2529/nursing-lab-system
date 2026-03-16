@@ -15,6 +15,8 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
         body { font-family: 'Kanit', sans-serif; background-color: #f0f4f8; }
@@ -101,16 +103,19 @@
                     </label>
                 </div>
                 <div class="space-y-4">
-                    <div><label class="block font-bold mb-1">เบอร์โทรศัพท์ติดต่อ</label><input type="tel" id="profilePhone" class="w-full input-brutal"></div>
+                    <div>
+                        <label class="block font-bold mb-1">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="tel" id="profilePhone" class="w-full input-brutal" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10" placeholder="08XXXXXXXX">
+                    </div>
                     <div><label class="block font-bold mb-1">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label><input type="password" id="profilePassword" class="w-full input-brutal"></div>
                 </div>
                 <button onclick="saveProfile()" class="w-full bg-[#22c55e] text-white py-3 font-black text-lg rounded-xl btn-brutal">💾 บันทึกข้อมูล</button>
-                <div id="adminCsvSection" class="hidden mt-8 pt-6 border-t-4 border-black">
-                    <h4 class="font-black text-xl mb-3 text-purple-700">📥 นำเข้ารายชื่อสมาชิกรวดเดียว (.csv)</h4>
-                    <p class="text-sm font-bold text-gray-600 mb-2">เรียงคอลัมน์: รหัส | ชื่อ | รหัสผ่าน | สิทธิ์ (Student/Staff)</p>
-                    <input type="file" id="csvFileInput" accept=".csv" class="w-full input-brutal bg-white mb-3">
-                    <button onclick="importUsersFromCSV()" class="w-full bg-purple-600 text-white py-2 rounded-xl font-black text-lg btn-brutal">
-                        🚀 อัปโหลดรายชื่อเข้าระบบ
+                <div id="adminExcelSection" class="hidden mt-8 pt-6 border-t-4 border-black">
+                    <h4 class="font-black text-xl mb-3 text-[#10b981]">📗 นำเข้ารายชื่อสมาชิกรวดเดียว (Excel)</h4>
+                    <p class="text-sm font-bold text-gray-600 mb-2">คอลัมน์ 1 ถึง 4: รหัส | ชื่อ | รหัสผ่าน | สิทธิ์ (Student/Staff)</p>
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="w-full input-brutal bg-white mb-3">
+                    <button onclick="importUsersFromExcel()" class="w-full bg-[#10b981] text-white py-2 rounded-xl font-black text-lg btn-brutal">
+                        🚀 อัปโหลดรายชื่อจาก Excel
                     </button>
                 </div>
             </div>
@@ -167,8 +172,23 @@
                 <h3 class="text-3xl font-black">📋 คิวงานสแกนอุปกรณ์</h3>
                 <button onclick="loadTasks()" class="bg-blue-300 font-bold px-4 py-2 rounded-lg btn-brutal">🔄 เช็คคิวใหม่</button>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="tasksContainer">
-                <p class="col-span-2 text-center py-8 font-bold text-xl bg-white border-4 border-black rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">🎉 ไม่มีรายการค้างจ้า พักผ่อนได้!</p>
+            
+            <div class="overflow-x-auto">
+                <table class="dashboard-table w-full whitespace-nowrap bg-white">
+                    <thead>
+                        <tr>
+                            <th>Ref.</th>
+                            <th>ผู้ยืม</th>
+                            <th>ชื่ออุปกรณ์</th>
+                            <th>กำหนดรับ-คืน</th>
+                            <th>สถานะ</th>
+                            <th class="text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksBody">
+                        <tr><td colspan="6" class="text-center py-8 font-bold text-xl">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -449,11 +469,18 @@
         function buildMenu() {
             const nav = document.getElementById('mainNav'); nav.innerHTML = '';
             const btnClass = "tab-btn relative flex-grow md:flex-1 py-4 bg-white text-black font-black text-lg border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#fde047] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all";
+            
             let menus = [
-                { id: 'dashboardTab', icon: '📊', text: 'แดชบอร์ด', roles: ['Student', 'Staff'] }, { id: 'catalogTab', icon: '🛒', text: 'แคตตาล็อก', roles: ['Student', 'Staff'] },
-                { id: 'myBookingsTab', icon: '📦', text: 'ของฉัน', roles: ['Student', 'Staff'] }, { id: 'scanTasksTab', icon: '📋', text: 'สแกน', roles: ['Student', 'Staff'] },
-                { id: 'addEquipTab', icon: '🏷️', text: 'จัดการคลัง', roles: ['Staff'] }, { id: 'profileTab', icon: '👤', text: 'โปรไฟล์', roles: ['Student', 'Staff'] }
+                { id: 'dashboardTab', icon: '📊', text: 'แดชบอร์ด', roles: ['Student', 'Staff'] }, 
+                { id: 'catalogTab', icon: '🛒', text: 'แคตตาล็อก', roles: ['Student', 'Staff'] },
+                { id: 'myBookingsTab', icon: '📦', text: 'ของฉัน', roles: ['Student', 'Staff'] }, 
+                
+                { id: 'scanTasksTab', icon: '📋', text: 'สแกน', roles: ['Staff'] }, 
+                
+                { id: 'addEquipTab', icon: '🏷️', text: 'จัดการคลัง', roles: ['Staff'] }, 
+                { id: 'profileTab', icon: '👤', text: 'โปรไฟล์', roles: ['Student', 'Staff'] }
             ];
+
             menus.forEach(m => {
                 if(m.roles.includes(currentUser.role)) {
                     let badgeHtml = (m.id === 'myBookingsTab' || m.id === 'scanTasksTab') ? `<span id="badge-${m.id}" class="hidden absolute -top-3 -right-3 bg-[#ef4444] text-white text-sm font-black w-8 h-8 flex items-center justify-center rounded-full border-4 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">0</span>` : '';
@@ -480,7 +507,10 @@
             try {
                 const result = await fetchAPI({ action: "login", username: user, password: pass });
                 if(result.success) {
-                    currentUser = { id: user, name: result.data.name, role: result.data.role, picUrl: result.data.picUrl };
+                    currentUser = { id: user, name: result.data.name, role: result.data.role, picUrl: result.data.picUrl || "" };
+                    
+                    saveSession(currentUser);
+                    
                     document.getElementById('displayUserName').innerText = currentUser.name; document.getElementById('displayUserRole').innerText = currentUser.role;
                     document.getElementById('displayUserPic').src = currentUser.picUrl || "https://placehold.co/100x100"; 
                     document.getElementById('loginSection').classList.add('hidden-section'); document.getElementById('mainSection').classList.remove('hidden-section');
@@ -489,30 +519,36 @@
             } catch (error) { Swal.fire('ข้อผิดพลาด', 'เชื่อมต่อไม่ได้', 'error'); }
             btn.innerText = "👉 เข้าสู่ระบบ"; btn.disabled = false;
         }
-        function logout() { location.reload(); }
+
+
+        function logout(isTimeout = false) { 
+            localStorage.removeItem('nursingLabSession');
+            currentUser = { id: "", name: "", role: "", picUrl: "" };
+            
+            if (isTimeout === true) {
+                Swal.fire({ title: 'หมดเวลาการใช้งาน', text: 'คุณไม่ได้ใช้งานเกิน 1 นาที ระบบจึงนำคุณออกจากระบบอัตโนมัติครับ', icon: 'warning', confirmButtonText: 'ตกลง' })
+                .then(() => location.reload());
+            } else {
+                location.reload(); 
+            }
+        }
 
         async function loadProfile() {
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() }); 
             
-            const csvSection = document.getElementById('adminCsvSection');
-            if (csvSection) {
-                if (currentUser.role === 'Staff') {
-                    csvSection.classList.remove('hidden');
-                } else {
-                    csvSection.classList.add('hidden');
-                }
+            const excelSection = document.getElementById('adminExcelSection');
+            if (excelSection) {
+                if (currentUser.role === 'Staff') excelSection.classList.remove('hidden');
+                else excelSection.classList.add('hidden');
             }
 
             const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
             if(result.success) { 
                 document.getElementById('profilePhone').value = result.data.phone || ""; 
                 document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; 
-                document.getElementById('profilePassword').value = ""; 
-                base64ProfileString = ""; 
+                document.getElementById('profilePassword').value = ""; base64ProfileString = ""; 
                 Swal.close(); 
-            } else {
-                Swal.fire('ผิดพลาด', result.message, 'error');
-            }
+            } else Swal.fire('ผิดพลาด', result.message, 'error');
         }
         function previewImage(event, targetId, isProfile) { const file = event.target.files[0]; if (file) resizeAndConvertImage(file, (base64) => { document.getElementById(targetId).src = base64; if(isProfile) base64ProfileString = base64; else base64EquipString = base64; }); }
         async function saveProfile() {
@@ -528,15 +564,33 @@
         }
 
         async function loadCatalog() {
-            const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
-            document.getElementById('searchCatalogInput').value = ""; document.getElementById('sortCatalogSelect').value = "name_asc"; document.getElementById('noSearchResult').classList.add('hidden'); 
+            const cont = document.getElementById('catalogContainer'); 
+            cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
+            
+            document.getElementById('searchCatalogInput').value = ""; 
+            document.getElementById('sortCatalogSelect').value = "name_asc"; 
+            document.getElementById('noSearchResult').classList.add('hidden'); 
+            
             activeCategoryFilter = 'ALL';
-            document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
-            document.getElementById('cat-btn-ALL').classList.add('bg-[#3b82f6]', 'text-white');
+            document.querySelectorAll('.cat-tab-btn').forEach(btn => { 
+                btn.classList.remove('bg-[#3b82f6]', 'text-white'); 
+                btn.classList.add('bg-white', 'text-black'); 
+            });
+            
+            let btnAll = document.getElementById('cat-btn-ALL');
+            if (btnAll) {
+                btnAll.classList.remove('bg-white', 'text-black');
+                btnAll.classList.add('bg-[#3b82f6]', 'text-white');
+            }
 
             const res = await fetchAPI({ action: "getAvailableEquipments" });
-            if(res.success && res.data.length > 0) { globalCatalogData = res.data; searchAndSortCatalog(); } 
-            else { globalCatalogData = []; cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; }
+            if(res.success && res.data.length > 0) { 
+                globalCatalogData = res.data; 
+                searchAndSortCatalog(); 
+            } else { 
+                globalCatalogData = []; 
+                cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; 
+            }
         }
 
         function filterByCategory(cat) {
@@ -574,8 +628,56 @@
         }
 
         async function requestEquipment(barcodeId, name) {
-            const { value: form } = await Swal.fire({ title: 'จองอุปกรณ์', html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p><label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label><input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;"><label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label><input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold" style="width: 85%;">`, focusConfirm: false, preConfirm: () => { let p = document.getElementById('swal-pickup').value; let r = document.getElementById('swal-return').value; if(!p || !r) Swal.showValidationMessage('กรุณาระบุวันที่ให้ครบถ้วน'); return { pickup: p, return: r }; } });
-            if (form) { Swal.fire({ title: 'ส่งคำขอ...', didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId, pickupDate: form.pickup, returnDate: form.return }); if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); loadCatalog(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); }
+            const { value: form } = await Swal.fire({ 
+                title: 'จองอุปกรณ์', 
+                html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p>
+                       <label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label>
+                       <input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;">
+                       <label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label>
+                       <input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold" style="width: 85%;">`, 
+                focusConfirm: false, 
+                didOpen: () => {
+                    let today = new Date().toISOString().split('T')[0];
+                    let pInput = document.getElementById('swal-pickup');
+                    let rInput = document.getElementById('swal-return');
+                    
+                    pInput.min = today;
+                    rInput.min = today;
+
+                    pInput.addEventListener('change', function() {
+                        rInput.min = this.value;
+                        
+                        if (rInput.value && rInput.value < this.value) {
+                            rInput.value = this.value; 
+                        }
+                    });
+                },
+                preConfirm: () => { 
+                    let p = document.getElementById('swal-pickup').value; 
+                    let r = document.getElementById('swal-return').value; 
+                    
+                    if(!p || !r) {
+                        Swal.showValidationMessage('กรุณาระบุวันที่ให้ครบถ้วนครับ'); 
+                        return false;
+                    }
+                    if(new Date(r) < new Date(p)) {
+                        Swal.showValidationMessage('❌ วันที่คืนของ ต้องไม่ย้อนหลังกว่าวันที่รับของครับ'); 
+                        return false;
+                    }
+                    
+                    return { pickup: p, return: r }; 
+                } 
+            });
+
+            if (form) { 
+                Swal.fire({ title: 'ส่งคำขอ...', didOpen: () => Swal.showLoading() }); 
+                const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId, pickupDate: form.pickup, returnDate: form.return }); 
+                if(res.success) { 
+                    Swal.fire('สำเร็จ!', res.message, 'success'); 
+                    loadCatalog(); 
+                    updateBadges(); 
+                } else Swal.fire('ผิดพลาด', res.message, 'error'); 
+            }
         }
 
         async function loadMyBookings() {
@@ -588,30 +690,71 @@
         async function cancelBooking(txId) { Swal.fire({ title: 'เอาจริงดิ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่ ยกเลิกเลย!', cancelButtonText: 'เปลี่ยนใจ' }).then(async (r) => { if (r.isConfirmed) { Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id }); if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); } }); }
 
         async function loadTasks() {
-            const cont = document.getElementById('tasksContainer'); cont.innerHTML = '<p class="col-span-2 text-center py-4 font-bold text-xl">กำลังดึงคิวงาน...</p>';
+            const tbody = document.getElementById('tasksBody'); 
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 font-bold text-xl">กำลังดึงคิวงาน...</td></tr>';
+            
             const res = await fetchAPI({ action: "getTasks", role: currentUser.role, studentId: currentUser.id });
+            
             if(res.success && res.data.length > 0) {
-                cont.innerHTML = ''; res.data.forEach(task => {
+                tbody.innerHTML = ''; 
+                res.data.forEach(task => {
                     let actionBtn = ""; let targetStatus = ""; let color = "";
-                    if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม (สแกน)"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
-                    else if(task.status === "รอผู้ยืมมารับ") { if (task.studentId === currentUser.id) { actionBtn = "🟢 รับของ (สแกน)"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; } else if (currentUser.role === "Staff") { actionBtn = "📤 สแกนจ่ายของให้ นศ."; targetStatus = "ถูกยืม"; color = "bg-[#0ea5e9]"; } }
-                    else if(task.status === "ถูกยืม") { if (task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ (สแกน)"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; } else if (currentUser.role === "Staff") { actionBtn = "📥 สแกนรับคืนแทน นศ."; targetStatus = "รอตรวจสอบ"; color = "bg-[#ea580c]"; } }
-                    else if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับเข้าคลัง"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
-                    if(actionBtn !== "") { cont.innerHTML += `<div class="card-brutal p-5 bg-white flex flex-col justify-between"><div class="mb-4"><span class="bg-black text-white font-bold px-2 py-1 rounded text-xs">Ref: ${task.txId.substring(0,12)}...</span><h4 class="font-black text-2xl text-gray-900 mt-3">${task.name}</h4><p class="font-bold text-gray-600 mt-1">ผู้จอง: <span class="text-blue-600">${task.studentId}</span></p></div><button onclick="openScannerTask('${task.txId}', '${task.barcode}', '${task.name}', '${task.subItems}', '${targetStatus}')" class="w-full ${color} text-white py-3 rounded-xl font-black text-xl btn-brutal">${actionBtn}</button></div>`; }
+                    if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
+                    else if(task.status === "รอผู้ยืมมารับ") { if (task.studentId === currentUser.id) { actionBtn = "🟢 รับของ"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; } else if (currentUser.role === "Staff") { actionBtn = "📤 จ่ายของ"; targetStatus = "ถูกยืม"; color = "bg-[#0ea5e9]"; } }
+                    else if(task.status === "ถูกยืม") { if (task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; } else if (currentUser.role === "Staff") { actionBtn = "📥 รับคืน"; targetStatus = "รอตรวจสอบ"; color = "bg-[#ea580c]"; } }
+                    else if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับ"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
+                    
+                    if(actionBtn !== "") { 
+                        let dataStr = encodeURIComponent(JSON.stringify(task));
+                        let shortTx = task.txId.substring(0, 8) + '...';
+                        
+                        let pDate = task.pickupDate ? new Date(task.pickupDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-';
+                        let rDate = task.returnDate ? new Date(task.returnDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-';
+                        let dateStr = `<span class="text-blue-600">${pDate}</span> - <span class="text-red-500">${rDate}</span>`;
+                        
+                        let statusColor = "text-gray-700";
+                        if (task.status === "รอตรวจสอบ") statusColor = "text-orange-500";
+                        if (task.status === "ถูกยืม") statusColor = "text-blue-600";
+                        if (task.status === "รอผู้ยืมมารับ") statusColor = "text-green-600";
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-[#fdf2f8] transition">
+                                <td class="text-xs font-bold text-gray-500">${shortTx}</td>
+                                <td class="font-black text-purple-700">${task.studentId}</td>
+                                <td class="font-black text-lg">${task.name}</td>
+                                <td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center">${dateStr}</td>
+                                <td class="font-black ${statusColor}">${task.status}</td>
+                                <td class="text-center">
+                                    <button onclick="openScannerTask('${dataStr}', '${targetStatus}')" class="${color} text-white px-4 py-2 rounded-lg font-black btn-brutal text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${actionBtn}</button>
+                                </td>
+                            </tr>
+                        `;
+                    }
                 });
-                if(cont.innerHTML === '') cont.innerHTML = '<p class="col-span-2 text-center py-8 font-black text-2xl bg-white card-brutal">🎉 งานหมดแล้วจ้า ว่าง!</p>';
-            } else cont.innerHTML = '<p class="col-span-2 text-center py-8 font-black text-2xl bg-white card-brutal">🎉 งานหมดแล้วจ้า ว่าง!</p>';
+                
+                if(tbody.innerHTML === '') {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>';
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>';
+            }
         }
 
-        function openScannerTask(txId, mainBarcode, equipName, subItemsStr, toStatus) {
+        function openScannerTask(dataStr, toStatus) {
+            let task = JSON.parse(decodeURIComponent(dataStr));
+            let subItemsStr = String(task.subItems || "").trim();
+
             let requiredItems = []; 
-            if (subItemsStr && subItemsStr.trim() !== "") requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase()); 
-            else requiredItems = [mainBarcode.toUpperCase()]; 
+            if (subItemsStr !== "" && subItemsStr !== "undefined") {
+                requiredItems = subItemsStr.split(',').map(s => s.trim().toUpperCase()); 
+            } else {
+                requiredItems = [String(task.barcode || "").toUpperCase()]; 
+            }
             
             let checklistData = requiredItems.map((item, idx) => ({ id: idx, code: item, scanned: false }));
-            currentScanTask = { txId: txId, mainBarcode: mainBarcode, checklist: checklistData, toStatus: toStatus };
+            currentScanTask = { txId: task.txId, mainBarcode: task.barcode, checklist: checklistData, toStatus: toStatus };
 
-            let html = `<div class="text-left mb-4"><p class="font-black text-xl text-blue-600">${equipName}</p><p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p><div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100 max-h-48 overflow-y-auto">${currentScanTask.checklist.map(item => `<div id="check-${item.id}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item.code}</div>`).join('')}</div></div><input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off"><p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>`;
+            let html = `<div class="text-left mb-4"><p class="font-black text-xl text-blue-600">${task.name}</p><p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p><div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100 max-h-48 overflow-y-auto">${currentScanTask.checklist.map(item => `<div id="check-${item.id}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item.code}</div>`).join('')}</div></div><input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off"><p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>`;
             Swal.fire({
                 title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก', customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
                 didOpen: () => { 
@@ -630,7 +773,7 @@
                 }
             });
         }
-
+        
         async function loadEditEquipList() {
             const list = document.getElementById('editEquipList'); list.innerHTML = '<li class="p-3 text-center font-bold">กำลังโหลด...</li>';
             document.getElementById('searchEditEquipInput').value = ""; document.getElementById('sortEditEquipSelect').value = "id_asc";
@@ -718,52 +861,108 @@
             Swal.fire({ title: 'สร้างไฟล์ปริ้น...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) { let oldPc = document.getElementById('batch-print-area'); if(oldPc) oldPc.remove(); let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; }); res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); }); Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500); } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
         }
-        async function importUsersFromCSV() {
-            if (currentUser.role !== 'Staff') {
-                return Swal.fire('ปฏิเสธการเข้าถึง', 'ฟังก์ชันนี้สงวนไว้สำหรับอาจารย์และเจ้าหน้าที่เท่านั้นครับ', 'error');
-            }
+        async function importUsersFromExcel() {
+            if (currentUser.role !== 'Staff') return Swal.fire('ปฏิเสธการเข้าถึง', 'ฟังก์ชันนี้เฉพาะเจ้าหน้าที่ครับ', 'error');
 
-            const fileInput = document.getElementById('csvFileInput');
-            if (fileInput.files.length === 0) {
-                return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ .csv ก่อนครับ', 'warning');
-            }
+            const fileInput = document.getElementById('excelFileInput');
+            if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
 
             const file = fileInput.files[0];
             const reader = new FileReader();
 
             reader.onload = async function(e) {
-                const text = e.target.result;
-                const rows = text.split('\n').filter(row => row.trim() !== '');
+                Swal.fire({ title: 'กำลังนำเข้า...', html: 'กรุณารอสักครู่ เครื่องกำลังแกะกล่อง Excel', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 
-                Swal.fire({ title: 'กำลังนำเข้า...', html: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                let count = 0;
-
-                for (let i = 1; i < rows.length; i++) {
-                    const cols = rows[i].split(',');ำ
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
                     
-                    if (cols.length >= 4) {
-                        let id = cols[0].trim();
-                        let name = cols[1].trim();
-                        let password = cols[2].trim();
-                        let role = cols[3].trim(); 
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    let count = 0;
 
-                        if (id !== "") {
-                            await db.collection("users").doc(id).set({
-                                name: name,
-                                password: password,
-                                role: role,
-                                picUrl: ""
-                            });
-                            count++;
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i];
+                        
+                        if (cols && cols.length >= 4 && cols[0]) {
+                            let id = String(cols[0]).trim();
+                            let name = String(cols[1] || "").trim();
+                            let password = String(cols[2] || "").trim();
+                            let role = String(cols[3] || "Student").trim(); 
+
+                            if (id !== "") {
+                                await db.collection("users").doc(id).set({
+                                    name: name,
+                                    password: password,
+                                    role: role,
+                                    picUrl: "" 
+                                });
+                                count++;
+                            }
                         }
                     }
+                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกจากไฟล์ Excel จำนวน ${count} คน เรียบร้อยครับ!`, 'success');
+                    fileInput.value = "";
+                } catch (error) {
+                    console.error(error);
+                    Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error');
                 }
-                Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกเข้าระบบจำนวน ${count} คน เรียบร้อยครับ!`, 'success');
-                fileInput.value = "";
             };
 
-            reader.readAsText(file, 'utf-8'); 
+            reader.readAsArrayBuffer(file); 
         }
+        const SESSION_TIMEOUT_MS = 1 * 60 * 1000;
+
+        function saveSession(userData) {
+            localStorage.setItem('nursingLabSession', JSON.stringify({ user: userData, timestamp: Date.now() }));
+        }
+
+        function checkSession() {
+            const sessionStr = localStorage.getItem('nursingLabSession');
+            if (sessionStr) {
+                const sessionObj = JSON.parse(sessionStr);
+                
+                if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) {
+                    logout(true);
+                } else {
+                    currentUser = sessionObj.user;
+                    document.getElementById('displayUserName').innerText = currentUser.name;
+                    document.getElementById('displayUserRole').innerText = currentUser.role;
+                    document.getElementById('displayUserPic').src = currentUser.picUrl || "https://placehold.co/100x100";
+                    document.getElementById('loginSection').classList.add('hidden-section');
+                    document.getElementById('mainSection').classList.remove('hidden-section');
+                    buildMenu();
+                    showTab('dashboardTab');
+                    updateBadges();
+                }
+            }
+        }
+
+        function resetSessionTimer() {
+            const sessionStr = localStorage.getItem('nursingLabSession');
+            if (sessionStr) {
+                const sessionObj = JSON.parse(sessionStr);
+                sessionObj.timestamp = Date.now();
+                localStorage.setItem('nursingLabSession', JSON.stringify(sessionObj));
+            }
+        }
+        document.addEventListener('mousemove', resetSessionTimer);
+        document.addEventListener('click', resetSessionTimer);
+        document.addEventListener('keypress', resetSessionTimer);
+
+        setInterval(() => {
+            const sessionStr = localStorage.getItem('nursingLabSession');
+            if (sessionStr) {
+                const sessionObj = JSON.parse(sessionStr);
+                if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) {
+                    logout(true);
+                }
+            }
+        }, 5000);
+
+        window.onload = checkSession;
     </script>
 </body>
 </html>
