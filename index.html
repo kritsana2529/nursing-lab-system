@@ -341,12 +341,29 @@
                 }
                 
                 if (action === "addEquipment" || action === "updateEquipment") {
-                    await db.collection("equipments").doc(payload.equipmentId).set({
+                    const docRef = db.collection("equipments").doc(payload.equipmentId);
+                    const docSnap = await docRef.get();
+                    
+                    let existingBorrows = 0;
+                    let finalPicUrl = payload.imageBase64;
+
+                    if (docSnap.exists) {
+                        existingBorrows = docSnap.data().borrows || 0;
+                        if (!finalPicUrl) finalPicUrl = docSnap.data().picUrl;
+                    }
+                    if (!finalPicUrl) finalPicUrl = "https://placehold.co/200x200?text=IMAGE";
+
+                    let totalQty = parseInt(payload.quantity);
+                    let availableQty = totalQty - existingBorrows;
+                    if (availableQty < 0) availableQty = 0; 
+
+                    await docRef.set({
                         id: payload.equipmentId, name: payload.name, category: payload.category,
-                        qty: parseInt(payload.quantity), totalQty: parseInt(payload.quantity),
-                        subItems: payload.subItems || "", borrows: 0,
-                        picUrl: payload.imageBase64 || "https://placehold.co/200x200?text=IMAGE"
+                        qty: availableQty, totalQty: totalQty,
+                        subItems: payload.subItems || "", borrows: existingBorrows,
+                        picUrl: finalPicUrl
                     }, { merge: true });
+                    
                     return { success: true, message: "บันทึกข้อมูลอุปกรณ์เรียบร้อย!" };
                 }
 
@@ -385,9 +402,13 @@
                         let txData = txDoc.data();
                         if (txData.status === "รอจัดเตรียม" || txData.status === "รอผู้ยืมมารับ") {
                             await txRef.update({ status: "ยกเลิก" });
+                            
                             const equipRef = db.collection("equipments").doc(txData.barcode);
-                            const equipDoc = await equipRef.get();
-                            if(equipDoc.exists) await equipRef.update({ qty: equipDoc.data().qty + 1 });
+                            await equipRef.update({ 
+                                qty: firebase.firestore.FieldValue.increment(1),
+                                borrows: firebase.firestore.FieldValue.increment(-1)
+                            });
+                            
                             return { success: true, message: "ยกเลิกและคืนยอดเข้าคลังแล้ว" };
                         }
                     }
@@ -422,8 +443,10 @@
 
                     if (payload.toStatus === "คืนแล้ว") {
                         const equipRef = db.collection("equipments").doc(payload.barcode);
-                        const equipDoc = await equipRef.get();
-                        if (equipDoc.exists) await equipRef.update({ qty: equipDoc.data().qty + 1 });
+                        await equipRef.update({ 
+                            qty: firebase.firestore.FieldValue.increment(1),
+                            borrows: firebase.firestore.FieldValue.increment(-1)
+                        });
                     }
                     return { success: true, message: "อัปเดตสถานะเป็น " + payload.toStatus + " แล้ว!" };
                 }
@@ -635,7 +658,13 @@
             const cont = document.getElementById('catalogContainer'); 
             if (filteredData.length === 0) { cont.innerHTML = ''; document.getElementById('noSearchResult').classList.remove('hidden'); } else {
                 document.getElementById('noSearchResult').classList.add('hidden'); let htmlStr = '';
-                filteredData.forEach(item => { htmlStr += `<div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1"><div><div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center"><img src="${item.picUrl}" class="w-full h-full object-cover"></div><span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span><h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4><p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p></div><div class="mt-5"><p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p><button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button></div></div>`; });
+                filteredData.forEach(item => { 
+                    // 🌟 ป้องกันบั๊กปุ่มพังเวลามีเครื่องหมายคำพูด (Quote Break Bug)
+                    let safeIdEncoded = encodeURIComponent(item.id);
+                    let safeNameEncoded = encodeURIComponent(item.name);
+                    
+                    htmlStr += `<div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1"><div><div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center"><img src="${item.picUrl}" class="w-full h-full object-cover"></div><span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span><h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4><p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p></div><div class="mt-5"><p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p><button onclick="requestEquipment(decodeURIComponent('${safeIdEncoded}'), decodeURIComponent('${safeNameEncoded}'))" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button></div></div>`; 
+                });
                 cont.innerHTML = htmlStr;
             }
         }
@@ -858,14 +887,29 @@
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (cols && cols.length >= 4 && cols[0]) {
-                            let id = String(cols[0]).trim(); let name = String(cols[1] || "").trim(); let cat = String(cols[2] || "ทั่วไป").trim(); let qty = parseInt(cols[3]) || 1; let subItems = String(cols[4] || "").trim(); let newPicUrl = String(cols[5] || "").trim();
+                            let id = String(cols[0]).trim(); let name = String(cols[1] || "").trim(); let cat = String(cols[2] || "ทั่วไป").trim(); 
+                            
+                            let parsedQty = parseInt(cols[3]);
+                            let totalQty = isNaN(parsedQty) ? 1 : parsedQty; 
+                            let subItems = String(cols[4] || "").trim(); let newPicUrl = String(cols[5] || "").trim();
 
                             if (id !== "" && name !== "") { 
-                                let existing = existingMap.get(id); let finalPicUrl = "https://placehold.co/200x200?text=IMAGE"; let existingBorrows = 0;
-                                if (existing) { existingBorrows = existing.borrows || 0; finalPicUrl = newPicUrl !== "" ? newPicUrl : (existing.picUrl || finalPicUrl); } else { if (newPicUrl !== "") finalPicUrl = newPicUrl; }
+                                let existing = existingMap.get(id); 
+                                let finalPicUrl = "https://placehold.co/200x200?text=IMAGE"; 
+                                let existingBorrows = 0;
+                                let availableQty = totalQty;
+
+                                if (existing) { 
+                                    existingBorrows = existing.borrows || 0; 
+                                    finalPicUrl = newPicUrl !== "" ? newPicUrl : (existing.picUrl || finalPicUrl); 
+                                    availableQty = totalQty - existingBorrows;
+                                    if(availableQty < 0) availableQty = 0;
+                                } else { 
+                                    if (newPicUrl !== "") finalPicUrl = newPicUrl; 
+                                }
 
                                 let docRef = db.collection("equipments").doc(id);
-                                batch.set(docRef, { id: id, name: name, category: cat, qty: qty, totalQty: qty, subItems: subItems, borrows: existingBorrows, picUrl: finalPicUrl }, { merge: true }); 
+                                batch.set(docRef, { id: id, name: name, category: cat, qty: availableQty, totalQty: totalQty, subItems: subItems, borrows: existingBorrows, picUrl: finalPicUrl }, { merge: true }); 
                                 count++; 
                                 if (count % 490 === 0) { await batch.commit(); batch = db.batch(); }
                             }
