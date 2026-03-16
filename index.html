@@ -921,14 +921,24 @@
                 try {
                     const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
                     let count = 0;
+                    let batch = db.batch();
+
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (cols && cols.length >= 4 && cols[0]) {
                             let id = String(cols[0]).trim(); let name = String(cols[1] || "").trim(); let password = String(cols[2] || "").trim(); let role = String(cols[3] || "Student").trim(); 
-                            if (id !== "") { await db.collection("users").doc(id).set({ name: name, password: password, role: role, picUrl: "" }); count++; }
+                            if (id !== "") { 
+                                let docRef = db.collection("users").doc(id);
+
+                                batch.set(docRef, { name: name, password: password, role: role }, { merge: true }); 
+                                count++; 
+                            }
                         }
                     }
+                    if(count > 0) await batch.commit();
+
                     Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกจากไฟล์ Excel จำนวน ${count} คน เรียบร้อยครับ!`, 'success');
                     fileInput.value = "";
                 } catch (error) { console.error(error); Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error'); }
@@ -985,25 +995,22 @@
         }, 5000);
 
         window.onload = checkSession;
+        
         function downloadExcelTemplate() {
             const templateData = [
                 ["รหัสผู้ใช้", "ชื่อ-นามสกุล", "รหัสผ่าน", "สิทธิ์ (Student หรือ Staff)"],
                 ["660001", "นายสมชาย ใจดี", "1234", "Student"],
                 ["staff-01", "อ.สมศรี เรียนเก่ง", "1234", "Staff"]
             ];
-
             const worksheet = XLSX.utils.aoa_to_sheet(templateData);
-            
             worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }];
-            
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "UserTemplate");
-
             XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มรายชื่อผู้ใช้งาน.xlsx");
         }
+
         function downloadEquipTemplate() {
             const templateData = [
-                // 🌟 เพิ่มคอลัมน์ที่ 6 สำหรับใส่ลิงก์รูปภาพ
                 ["รหัสอุปกรณ์ (ID)", "ชื่ออุปกรณ์", "หมวดหมู่ (ทั่วไป/ครุภัณฑ์/ชุดเซ็ต)", "จำนวนทั้งหมด", "อุปกรณ์ย่อย (ถ้ามี ใส่รหัสคั่นด้วยลูกน้ำ)", "ลิงก์รูปภาพ (URL ถ้ามี)"],
                 ["EQ-001", "เครื่องวัดความดัน (BP Drop)", "ครุภัณฑ์", "5", "", "https://placehold.co/200x200/blue/white?text=BP"],
                 ["SET-01", "ชุดทำแผล (Dressing Set)", "ชุดเซ็ต", "10", "EQ-002, EQ-003", ""],
@@ -1028,7 +1035,13 @@
                 try {
                     const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    const snap = await db.collection("equipments").get();
+                    const existingMap = new Map();
+                    snap.forEach(doc => existingMap.set(doc.id, doc.data()));
+
                     let count = 0;
+                    let batch = db.batch();
 
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
@@ -1038,37 +1051,33 @@
                             let cat = String(cols[2] || "ทั่วไป").trim(); 
                             let qty = parseInt(cols[3]) || 1; 
                             let subItems = String(cols[4] || "").trim();
-                            
                             let newPicUrl = String(cols[5] || "").trim();
 
                             if (id !== "" && name !== "") { 
-                                const docRef = db.collection("equipments").doc(id);
-                                const docSnap = await docRef.get();
-                                
+                                let existing = existingMap.get(id);
                                 let finalPicUrl = "https://placehold.co/200x200?text=IMAGE";
                                 let existingBorrows = 0;
                                 
-                                if (docSnap.exists) {
-                                    existingBorrows = docSnap.data().borrows || 0;
-                                    finalPicUrl = newPicUrl !== "" ? newPicUrl : (docSnap.data().picUrl || finalPicUrl);
+                                if (existing) {
+                                    existingBorrows = existing.borrows || 0;
+                                    finalPicUrl = newPicUrl !== "" ? newPicUrl : (existing.picUrl || finalPicUrl);
                                 } else {
                                     if (newPicUrl !== "") finalPicUrl = newPicUrl;
                                 }
 
-                                await docRef.set({ 
-                                    id: id,
-                                    name: name,
-                                    category: cat,
-                                    qty: qty,
-                                    totalQty: qty,
-                                    subItems: subItems,
-                                    borrows: existingBorrows,
-                                    picUrl: finalPicUrl
-                                }); 
+                                let docRef = db.collection("equipments").doc(id);
+                                batch.set(docRef, { 
+                                    id: id, name: name, category: cat, qty: qty, totalQty: qty, 
+                                    subItems: subItems, borrows: existingBorrows, picUrl: finalPicUrl
+                                }, { merge: true }); 
+                                
                                 count++; 
                             }
                         }
                     }
+                    
+                    if(count > 0) await batch.commit();
+
                     Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มอุปกรณ์จาก Excel จำนวน ${count} รายการ เรียบร้อยครับ!`, 'success')
                     .then(() => { 
                         loadEditEquipList(); 
