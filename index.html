@@ -105,6 +105,14 @@
                     <div><label class="block font-bold mb-1">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่เปลี่ยน)</label><input type="password" id="profilePassword" class="w-full input-brutal"></div>
                 </div>
                 <button onclick="saveProfile()" class="w-full bg-[#22c55e] text-white py-3 font-black text-lg rounded-xl btn-brutal">💾 บันทึกข้อมูล</button>
+                <div id="adminCsvSection" class="hidden mt-8 pt-6 border-t-4 border-black">
+                    <h4 class="font-black text-xl mb-3 text-purple-700">📥 นำเข้ารายชื่อสมาชิกรวดเดียว (.csv)</h4>
+                    <p class="text-sm font-bold text-gray-600 mb-2">เรียงคอลัมน์: รหัส | ชื่อ | รหัสผ่าน | สิทธิ์ (Student/Staff)</p>
+                    <input type="file" id="csvFileInput" accept=".csv" class="w-full input-brutal bg-white mb-3">
+                    <button onclick="importUsersFromCSV()" class="w-full bg-purple-600 text-white py-2 rounded-xl font-black text-lg btn-brutal">
+                        🚀 อัปโหลดรายชื่อเข้าระบบ
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -484,8 +492,27 @@
         function logout() { location.reload(); }
 
         async function loadProfile() {
-            Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() }); const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
-            if(result.success) { document.getElementById('profilePhone').value = result.data.phone; document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; document.getElementById('profilePassword').value = ""; base64ProfileString = ""; Swal.close(); } else Swal.fire('ผิดพลาด', result.message, 'error');
+            Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() }); 
+            
+            const csvSection = document.getElementById('adminCsvSection');
+            if (csvSection) {
+                if (currentUser.role === 'Staff') {
+                    csvSection.classList.remove('hidden');
+                } else {
+                    csvSection.classList.add('hidden');
+                }
+            }
+
+            const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
+            if(result.success) { 
+                document.getElementById('profilePhone').value = result.data.phone || ""; 
+                document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; 
+                document.getElementById('profilePassword').value = ""; 
+                base64ProfileString = ""; 
+                Swal.close(); 
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
         }
         function previewImage(event, targetId, isProfile) { const file = event.target.files[0]; if (file) resizeAndConvertImage(file, (base64) => { document.getElementById(targetId).src = base64; if(isProfile) base64ProfileString = base64; else base64EquipString = base64; }); }
         async function saveProfile() {
@@ -690,6 +717,52 @@
         async function printAllBarcodes() {
             Swal.fire({ title: 'สร้างไฟล์ปริ้น...', allowOutsideClick: false, didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "getAllEquipment" });
             if(res.success && res.data.length > 0) { let oldPc = document.getElementById('batch-print-area'); if(oldPc) oldPc.remove(); let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; }); res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); }); Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500); } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
+        }
+        async function importUsersFromCSV() {
+            if (currentUser.role !== 'Staff') {
+                return Swal.fire('ปฏิเสธการเข้าถึง', 'ฟังก์ชันนี้สงวนไว้สำหรับอาจารย์และเจ้าหน้าที่เท่านั้นครับ', 'error');
+            }
+
+            const fileInput = document.getElementById('csvFileInput');
+            if (fileInput.files.length === 0) {
+                return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ .csv ก่อนครับ', 'warning');
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                const text = e.target.result;
+                const rows = text.split('\n').filter(row => row.trim() !== '');
+                
+                Swal.fire({ title: 'กำลังนำเข้า...', html: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                let count = 0;
+
+                for (let i = 1; i < rows.length; i++) {
+                    const cols = rows[i].split(',');ำ
+                    
+                    if (cols.length >= 4) {
+                        let id = cols[0].trim();
+                        let name = cols[1].trim();
+                        let password = cols[2].trim();
+                        let role = cols[3].trim(); 
+
+                        if (id !== "") {
+                            await db.collection("users").doc(id).set({
+                                name: name,
+                                password: password,
+                                role: role,
+                                picUrl: ""
+                            });
+                            count++;
+                        }
+                    }
+                }
+                Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกเข้าระบบจำนวน ${count} คน เรียบร้อยครับ!`, 'success');
+                fileInput.value = "";
+            };
+
+            reader.readAsText(file, 'utf-8'); 
         }
     </script>
 </body>
