@@ -174,15 +174,14 @@
             </div>
             
             <div class="overflow-x-auto">
-                <table class="dashboard-table w-full whitespace-nowrap bg-white">
+                <table class="dashboard-table w-full bg-white">
                     <thead>
                         <tr>
-                            <th>Ref.</th>
-                            <th>ผู้ยืม</th>
-                            <th>ชื่ออุปกรณ์</th>
-                            <th>กำหนดรับ-คืน</th>
-                            <th>สถานะ</th>
-                            <th class="text-center">จัดการ</th>
+                            <th class="whitespace-nowrap">Ref.</th>
+                            <th class="whitespace-nowrap">ผู้ยืม</th>
+                            <th class="w-1/3">ชื่ออุปกรณ์</th> <th class="whitespace-nowrap">กำหนดรับ-คืน</th>
+                            <th class="whitespace-nowrap">สถานะ</th>
+                            <th class="text-center whitespace-nowrap">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="tasksBody">
@@ -734,12 +733,12 @@
 
                         tbody.innerHTML += `
                             <tr class="hover:bg-[#fdf2f8] transition">
-                                <td class="text-xs font-bold text-gray-500">${shortTx}</td>
-                                <td class="font-black text-purple-700">${task.studentName} <span class="block text-xs font-bold text-gray-400">(${task.studentId})</span></td>
-                                <td class="font-black text-lg">${task.name}</td>
-                                <td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center">${dateStr}</td>
-                                <td class="font-black ${statusColor}">${task.status}</td>
-                                <td class="text-center">
+                                <td class="text-xs font-bold text-gray-500 whitespace-nowrap">${shortTx}</td>
+                                <td class="font-black text-purple-700 whitespace-nowrap">${task.studentName} <span class="block text-xs font-bold text-gray-400">(${task.studentId})</span></td>
+                                <td class="font-black text-lg whitespace-normal break-words min-w-[150px] leading-tight py-3">${task.name}</td>
+                                <td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center whitespace-nowrap">${dateStr}</td>
+                                <td class="font-black ${statusColor} whitespace-nowrap">${task.status}</td>
+                                <td class="text-center whitespace-nowrap">
                                     <button onclick="openScannerTask('${dataStr}', '${targetStatus}')" class="${color} text-white px-4 py-2 rounded-lg font-black btn-brutal text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${actionBtn}</button>
                                 </td>
                             </tr>
