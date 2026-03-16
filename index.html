@@ -387,6 +387,10 @@
                 }
 
                 if (action === "getTasks") {
+                    const usersSnap = await db.collection("users").get();
+                    let userMap = {};
+                    usersSnap.forEach(u => { userMap[u.id] = u.data().name || u.id; });
+
                     const snapshot = await db.collection("transactions").get();
                     let tasks = [];
                     snapshot.forEach(doc => {
@@ -397,7 +401,10 @@
                         if (payload.role === "Staff" && isActive) isMatch = true;
                         else if (payload.role === "Student" && txData.studentId === payload.studentId && isActive) isMatch = true;
 
-                        if (isMatch) tasks.push(txData);
+                        if (isMatch) {
+                            txData.studentName = userMap[txData.studentId] || txData.studentId; 
+                            tasks.push(txData);
+                        }
                     });
                     return { success: true, data: tasks };
                 }
@@ -720,7 +727,7 @@
                         tbody.innerHTML += `
                             <tr class="hover:bg-[#fdf2f8] transition">
                                 <td class="text-xs font-bold text-gray-500">${shortTx}</td>
-                                <td class="font-black text-purple-700">${task.studentId}</td>
+                                <td class="font-black text-purple-700">${task.studentName} <span class="block text-xs font-bold text-gray-400">(${task.studentId})</span></td>
                                 <td class="font-black text-lg">${task.name}</td>
                                 <td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center">${dateStr}</td>
                                 <td class="font-black ${statusColor}">${task.status}</td>
