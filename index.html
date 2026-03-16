@@ -111,7 +111,12 @@
                 </div>
                 <button onclick="saveProfile()" class="w-full bg-[#22c55e] text-white py-3 font-black text-lg rounded-xl btn-brutal">💾 บันทึกข้อมูล</button>
                 <div id="adminExcelSection" class="hidden mt-8 pt-6 border-t-4 border-black">
-                    <h4 class="font-black text-xl mb-3 text-[#10b981]">📗 นำเข้ารายชื่อสมาชิกรวดเดียว (Excel)</h4>
+                    <div class="flex justify-between items-end mb-3">
+                        <h4 class="font-black text-xl text-[#10b981]">📗 นำเข้ารายชื่อ (Excel)</h4>
+                        <button onclick="downloadExcelTemplate()" class="bg-white text-black px-3 py-1 rounded-lg font-bold text-sm border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
+                            📥 โหลดแบบฟอร์ม
+                        </button>
+                    </div>
                     <p class="text-sm font-bold text-gray-600 mb-2">คอลัมน์ 1 ถึง 4: รหัส | ชื่อ | รหัสผ่าน | สิทธิ์ (Student/Staff)</p>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="w-full input-brutal bg-white mb-3">
                     <button onclick="importUsersFromExcel()" class="w-full bg-[#10b981] text-white py-2 rounded-xl font-black text-lg btn-brutal">
@@ -240,6 +245,20 @@
                             <button onclick="downloadBarcode()" class="bg-[#10b981] text-white py-2 rounded-lg font-black btn-brutal">📥 โหลดรูป PNG</button>
                             <button onclick="printAllBarcodes()" class="col-span-2 bg-[#8b5cf6] text-white py-3 rounded-lg font-black btn-brutal text-lg">📑 ปริ้นทั้งหมด (Batch Print)</button>
                         </div>
+                    </div>
+                    
+                    <div class="bg-white p-5 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] mb-8">
+                        <div class="flex justify-between items-end mb-3 border-b-2 border-black pb-2">
+                            <h4 class="font-black text-xl text-[#8b5cf6]">📦 นำเข้าอุปกรณ์ (Excel)</h4>
+                            <button onclick="downloadEquipTemplate()" class="bg-white text-black px-3 py-1 rounded-lg font-bold text-sm border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
+                                📥 โหลดแบบฟอร์ม
+                            </button>
+                        </div>
+                        <p class="text-sm font-bold text-gray-600 mb-3">* ข้อมูลจะเข้าระบบทันที ส่วนรูปภาพสามารถกด ✏️ เพื่ออัปโหลดใส่ทีหลังได้ครับ</p>
+                        <input type="file" id="excelEquipInput" accept=".xlsx, .xls" class="w-full input-brutal bg-white mb-3 text-sm">
+                        <button onclick="importEquipFromExcel()" class="w-full bg-[#8b5cf6] text-white py-2 rounded-xl font-black text-lg btn-brutal">
+                            🚀 อัปโหลดคลังอุปกรณ์
+                        </button>
                     </div>
                     
                     <div class="bg-white p-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -966,6 +985,103 @@
         }, 5000);
 
         window.onload = checkSession;
+        function downloadExcelTemplate() {
+            const templateData = [
+                ["รหัสผู้ใช้", "ชื่อ-นามสกุล", "รหัสผ่าน", "สิทธิ์ (Student หรือ Staff)"],
+                ["660001", "นายสมชาย ใจดี", "1234", "Student"],
+                ["staff-01", "อ.สมศรี เรียนเก่ง", "1234", "Staff"]
+            ];
+
+            const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+            
+            worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }];
+            
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "UserTemplate");
+
+            XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มรายชื่อผู้ใช้งาน.xlsx");
+        }
+        function downloadEquipTemplate() {
+            const templateData = [
+                // 🌟 เพิ่มคอลัมน์ที่ 6 สำหรับใส่ลิงก์รูปภาพ
+                ["รหัสอุปกรณ์ (ID)", "ชื่ออุปกรณ์", "หมวดหมู่ (ทั่วไป/ครุภัณฑ์/ชุดเซ็ต)", "จำนวนทั้งหมด", "อุปกรณ์ย่อย (ถ้ามี ใส่รหัสคั่นด้วยลูกน้ำ)", "ลิงก์รูปภาพ (URL ถ้ามี)"],
+                ["EQ-001", "เครื่องวัดความดัน (BP Drop)", "ครุภัณฑ์", "5", "", "https://placehold.co/200x200/blue/white?text=BP"],
+                ["SET-01", "ชุดทำแผล (Dressing Set)", "ชุดเซ็ต", "10", "EQ-002, EQ-003", ""],
+                ["EQ-002", "กรรไกร", "ทั่วไป", "20", "", ""]
+            ];
+            const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+            worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 40 }];
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "EquipTemplate");
+            XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มอุปกรณ์(พร้อมรูปลิงก์).xlsx");
+        }
+
+        function importEquipFromExcel() {
+            const fileInput = document.getElementById('excelEquipInput');
+            if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                Swal.fire({ title: 'กำลังนำเข้าคลัง...', html: 'กรุณารอสักครู่ เครื่องกำลังแกะกล่อง Excel', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    let count = 0;
+
+                    for (let i = 1; i < rows.length; i++) {
+                        const cols = rows[i];
+                        if (cols && cols.length >= 4 && cols[0]) {
+                            let id = String(cols[0]).trim(); 
+                            let name = String(cols[1] || "").trim(); 
+                            let cat = String(cols[2] || "ทั่วไป").trim(); 
+                            let qty = parseInt(cols[3]) || 1; 
+                            let subItems = String(cols[4] || "").trim();
+                            
+                            let newPicUrl = String(cols[5] || "").trim();
+
+                            if (id !== "" && name !== "") { 
+                                const docRef = db.collection("equipments").doc(id);
+                                const docSnap = await docRef.get();
+                                
+                                let finalPicUrl = "https://placehold.co/200x200?text=IMAGE";
+                                let existingBorrows = 0;
+                                
+                                if (docSnap.exists) {
+                                    existingBorrows = docSnap.data().borrows || 0;
+                                    finalPicUrl = newPicUrl !== "" ? newPicUrl : (docSnap.data().picUrl || finalPicUrl);
+                                } else {
+                                    if (newPicUrl !== "") finalPicUrl = newPicUrl;
+                                }
+
+                                await docRef.set({ 
+                                    id: id,
+                                    name: name,
+                                    category: cat,
+                                    qty: qty,
+                                    totalQty: qty,
+                                    subItems: subItems,
+                                    borrows: existingBorrows,
+                                    picUrl: finalPicUrl
+                                }); 
+                                count++; 
+                            }
+                        }
+                    }
+                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มอุปกรณ์จาก Excel จำนวน ${count} รายการ เรียบร้อยครับ!`, 'success')
+                    .then(() => { 
+                        loadEditEquipList(); 
+                        if(document.getElementById('catalogTab').classList.contains('hidden-section') === false) loadCatalog(); 
+                    });
+                    fileInput.value = "";
+                } catch (error) { 
+                    console.error(error); 
+                    Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error'); 
+                }
+            };
+            reader.readAsArrayBuffer(file); 
+        }
     </script>
 </body>
 </html>
