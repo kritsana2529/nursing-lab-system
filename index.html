@@ -89,8 +89,7 @@
             <button onclick="logout()" class="bg-[#ef4444] text-white font-bold py-2 px-6 rounded-lg btn-brutal">❌ ออกจากระบบ</button>
         </div>
 
-        <div id="mainNav" class="flex flex-wrap gap-3 mb-8">
-            </div>
+        <div id="mainNav" class="flex flex-wrap gap-3 mb-8"></div>
 
         <div id="profileTab" class="hidden-section card-brutal bg-white p-6 md:p-8 tab-content">
             <h3 class="text-3xl font-black mb-8 border-b-4 border-black pb-2 inline-block">👤 โปรไฟล์ส่วนตัว</h3>
@@ -184,7 +183,8 @@
                         <tr>
                             <th class="whitespace-nowrap">Ref.</th>
                             <th class="whitespace-nowrap">ผู้ยืม</th>
-                            <th class="w-1/3">ชื่ออุปกรณ์</th> <th class="whitespace-nowrap">กำหนดรับ-คืน</th>
+                            <th class="w-1/3">ชื่ออุปกรณ์</th> 
+                            <th class="whitespace-nowrap">กำหนดรับ-คืน</th>
                             <th class="whitespace-nowrap">สถานะ</th>
                             <th class="text-center whitespace-nowrap">จัดการ</th>
                         </tr>
@@ -301,11 +301,8 @@
         let currentUser = { id: "", name: "", role: "", picUrl: "" };
         let base64ProfileString = ""; let base64EquipString = ""; 
         let currentScanTask = { txId: "", mainBarcode: "", checklist: [], toStatus: "" };
-        
-        let globalCatalogData = []; 
-        let activeCategoryFilter = 'ALL';
-        let globalEditEquipData = [];
-        let selectedSubItems = [];
+        let globalCatalogData = []; let activeCategoryFilter = 'ALL';
+        let globalEditEquipData = []; let selectedSubItems = [];
 
         async function fetchAPI(payload) {
             try {
@@ -315,8 +312,7 @@
                     const userRef = db.collection("users").doc(payload.username);
                     const doc = await userRef.get();
                     if (doc.exists && doc.data().password === payload.password) {
-                        let data = doc.data();
-                        let userRole = data.role;
+                        let data = doc.data(); let userRole = data.role;
                         if (!userRole || userRole.toLowerCase() === "staff" || userRole.toLowerCase() === "admin") userRole = "Staff"; 
                         else if (userRole.toLowerCase() === "student") userRole = "Student";
                         return { success: true, data: { name: data.name || "อ. แอดมิน", role: userRole, picUrl: data.picUrl || "" } };
@@ -340,8 +336,7 @@
 
                 if (action === "getAllEquipment" || action === "getAvailableEquipments") {
                     const snapshot = await db.collection("equipments").get();
-                    let items = [];
-                    snapshot.forEach(doc => items.push(doc.data()));
+                    let items = []; snapshot.forEach(doc => items.push(doc.data()));
                     return { success: true, data: items };
                 }
                 
@@ -359,14 +354,12 @@
                     const equipRef = db.collection("equipments").doc(payload.barcode);
                     const equipDoc = await equipRef.get();
                     
-                    if (!equipDoc.exists || equipDoc.data().qty <= 0) {
-                        return { success: false, message: "อุปกรณ์หมด หรือไม่มีรหัสนี้ในคลังครับ" };
-                    }
-                    
+                    if (!equipDoc.exists || equipDoc.data().qty <= 0) return { success: false, message: "อุปกรณ์หมด หรือไม่มีรหัสนี้ในคลังครับ" };
                     let equipData = equipDoc.data();
+                    
                     await equipRef.update({ 
-                        qty: equipData.qty - 1, 
-                        borrows: (equipData.borrows || 0) + 1 
+                        qty: firebase.firestore.FieldValue.increment(-1), 
+                        borrows: firebase.firestore.FieldValue.increment(1) 
                     });
 
                     let txId = "TX-" + new Date().getTime();
@@ -376,17 +369,12 @@
                         pickupDate: payload.pickupDate, returnDate: payload.returnDate,
                         status: "รอจัดเตรียม", timestamp: new Date().toISOString()
                     });
-                    
                     return { success: true, message: "จองอุปกรณ์เรียบร้อยแล้ว!" };
                 }
 
                 if (action === "getMyBookings") {
                     const snapshot = await db.collection("transactions").where("studentId", "==", payload.studentId).get();
-                    let items = [];
-                    snapshot.forEach(doc => {
-                        let data = doc.data();
-                        if (data.status !== "ยกเลิก" && data.status !== "คืนแล้ว") items.push(data);
-                    });
+                    let items = []; snapshot.forEach(doc => { let data = doc.data(); if (data.status !== "ยกเลิก" && data.status !== "คืนแล้ว") items.push(data); });
                     return { success: true, data: items };
                 }
 
@@ -408,8 +396,7 @@
 
                 if (action === "getTasks") {
                     const usersSnap = await db.collection("users").get();
-                    let userMap = {};
-                    usersSnap.forEach(u => { userMap[u.id] = u.data().name || u.id; });
+                    let userMap = {}; usersSnap.forEach(u => { userMap[u.id] = u.data().name || u.id; });
 
                     const snapshot = await db.collection("transactions").get();
                     let tasks = [];
@@ -455,11 +442,7 @@
 
                 if (action === "getDashboard") {
                     const snapshot = await db.collection("equipments").get();
-                    let items = [];
-                    snapshot.forEach(doc => {
-                        let d = doc.data();
-                        items.push({ id: d.id, name: d.name, borrows: d.borrows || 0, available: d.qty });
-                    });
+                    let items = []; snapshot.forEach(doc => { let d = doc.data(); items.push({ id: d.id, name: d.name, borrows: d.borrows || 0, available: d.qty }); });
                     items.sort((a, b) => b.borrows - a.borrows);
                     return { success: true, data: items.slice(0, 10) };
                 }
@@ -494,7 +477,7 @@
         }
 
         function buildMenu() {
-            const nav = document.getElementById('mainNav'); nav.innerHTML = '';
+            const nav = document.getElementById('mainNav');
             const btnClass = "tab-btn relative flex-grow md:flex-1 py-4 bg-white text-black font-black text-lg border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#fde047] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all";
             
             let menus = [
@@ -554,24 +537,51 @@
             if (isTimeout === true) {
                 Swal.fire({ title: 'หมดเวลาการใช้งาน', text: 'คุณไม่ได้ใช้งานเกินเวลาที่กำหนด ระบบจึงนำคุณออกจากระบบอัตโนมัติครับ', icon: 'warning', confirmButtonText: 'ตกลง' })
                 .then(() => location.reload());
-            } else {
-                location.reload(); 
+            } else location.reload(); 
+        }
+
+        const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+        let lastInteractionTime = Date.now();
+
+        function saveSession(userData) { localStorage.setItem('nursingLabSession', JSON.stringify({ user: userData, timestamp: Date.now() })); }
+
+        function checkSession() {
+            const sessionStr = localStorage.getItem('nursingLabSession');
+            if (sessionStr) {
+                const sessionObj = JSON.parse(sessionStr);
+                if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) logout(true);
+                else {
+                    currentUser = sessionObj.user;
+                    document.getElementById('displayUserName').innerText = currentUser.name; document.getElementById('displayUserRole').innerText = currentUser.role; document.getElementById('displayUserPic').src = currentUser.picUrl || "https://placehold.co/100x100";
+                    document.getElementById('loginSection').classList.add('hidden-section'); document.getElementById('mainSection').classList.remove('hidden-section');
+                    buildMenu(); showTab('dashboardTab'); updateBadges();
+                }
             }
         }
+
+        function resetSessionTimer() {
+            const now = Date.now();
+            if (now - lastInteractionTime > 2000) { 
+                lastInteractionTime = now;
+                const sessionStr = localStorage.getItem('nursingLabSession');
+                if (sessionStr) {
+                    const sessionObj = JSON.parse(sessionStr); sessionObj.timestamp = now; localStorage.setItem('nursingLabSession', JSON.stringify(sessionObj));
+                }
+            }
+        }
+        document.addEventListener('mousemove', resetSessionTimer); document.addEventListener('click', resetSessionTimer); document.addEventListener('keypress', resetSessionTimer);
+        setInterval(() => { const sessionStr = localStorage.getItem('nursingLabSession'); if (sessionStr) { const sessionObj = JSON.parse(sessionStr); if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) logout(true); } }, 5000);
+        window.onload = checkSession;
 
         async function loadProfile() {
             Swal.fire({ title: 'กำลังโหลด...', didOpen: () => Swal.showLoading() }); 
             const excelSection = document.getElementById('adminExcelSection');
             if (excelSection) {
-                if (currentUser.role === 'Staff') excelSection.classList.remove('hidden');
-                else excelSection.classList.add('hidden');
+                if (currentUser.role === 'Staff') excelSection.classList.remove('hidden'); else excelSection.classList.add('hidden');
             }
-
             const result = await fetchAPI({ action: "getUserProfile", username: currentUser.id });
             if(result.success) { 
-                document.getElementById('profilePhone').value = result.data.phone || ""; 
-                document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; 
-                document.getElementById('profilePassword').value = ""; base64ProfileString = ""; 
+                document.getElementById('profilePhone').value = result.data.phone || ""; document.getElementById('profilePreview').src = result.data.picUrl || "https://placehold.co/100x100"; document.getElementById('profilePassword').value = ""; base64ProfileString = ""; 
                 Swal.close(); 
             } else Swal.fire('ผิดพลาด', result.message, 'error');
         }
@@ -585,52 +595,27 @@
         }
 
         async function loadDashboard() {
-            const tbody = document.getElementById('dashboardBody'); 
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
+            const tbody = document.getElementById('dashboardBody'); tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
             const res = await fetchAPI({ action: "getDashboard" });
-            
             if(res.success && res.data.length > 0) { 
                 let htmlStr = '';
-                res.data.forEach((item, index) => { 
-                    let qtyClass = item.available > 0 ? "text-green-600 font-black" : "text-red-600 font-black"; 
-                    htmlStr += `<tr class="hover:bg-gray-100 transition"><td class="text-center font-bold text-gray-400 text-lg">${index + 1}</td><td class="font-bold">${item.id}</td><td class="font-bold">${item.name}</td><td class="text-center font-black text-xl">${item.borrows}</td><td class="text-center text-xl ${qtyClass}">${item.available > 0 ? item.available : "หมด!"}</td></tr>`; 
-                }); 
+                res.data.forEach((item, index) => { let qtyClass = item.available > 0 ? "text-green-600 font-black" : "text-red-600 font-black"; htmlStr += `<tr class="hover:bg-gray-100 transition"><td class="text-center font-bold text-gray-400 text-lg">${index + 1}</td><td class="font-bold">${item.id}</td><td class="font-bold">${item.name}</td><td class="text-center font-black text-xl">${item.borrows}</td><td class="text-center text-xl ${qtyClass}">${item.available > 0 ? item.available : "หมด!"}</td></tr>`; }); 
                 tbody.innerHTML = htmlStr;
-            } else {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
-            }
+            } else tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 font-bold text-gray-400">ยังไม่มีข้อมูลจ้า</td></tr>';
         }
 
         async function loadCatalog() {
-            const cont = document.getElementById('catalogContainer'); 
-            cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
-            
-            document.getElementById('searchCatalogInput').value = ""; 
-            document.getElementById('sortCatalogSelect').value = "name_asc"; 
-            document.getElementById('noSearchResult').classList.add('hidden'); 
-            
+            const cont = document.getElementById('catalogContainer'); cont.innerHTML = '<p class="col-span-4 text-center font-bold text-xl">กำลังโหลดของในคลัง...</p>';
+            document.getElementById('searchCatalogInput').value = ""; document.getElementById('sortCatalogSelect').value = "name_asc"; document.getElementById('noSearchResult').classList.add('hidden'); 
             activeCategoryFilter = 'ALL';
-            document.querySelectorAll('.cat-tab-btn').forEach(btn => { 
-                btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); 
-            });
-            
-            let btnAll = document.getElementById('cat-btn-ALL');
-            if (btnAll) {
-                btnAll.classList.remove('bg-white', 'text-black'); btnAll.classList.add('bg-[#3b82f6]', 'text-white');
-            }
-
+            document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
+            let btnAll = document.getElementById('cat-btn-ALL'); if (btnAll) { btnAll.classList.remove('bg-white', 'text-black'); btnAll.classList.add('bg-[#3b82f6]', 'text-white'); }
             const res = await fetchAPI({ action: "getAvailableEquipments" });
-            if(res.success && res.data.length > 0) { 
-                globalCatalogData = res.data; searchAndSortCatalog(); 
-            } else { 
-                globalCatalogData = []; 
-                cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; 
-            }
+            if(res.success && res.data.length > 0) { globalCatalogData = res.data; searchAndSortCatalog(); } else { globalCatalogData = []; cont.innerHTML = '<p class="text-red-500 col-span-4 text-center font-black text-2xl">ตอนนี้ไม่มีของให้ยืมเลยจ้า 😭</p>'; }
         }
 
         function filterByCategory(cat) {
-            activeCategoryFilter = cat;
-            document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
+            activeCategoryFilter = cat; document.querySelectorAll('.cat-tab-btn').forEach(btn => { btn.classList.remove('bg-[#3b82f6]', 'text-white'); btn.classList.add('bg-white', 'text-black'); });
             let activeBtn = document.getElementById('cat-btn-' + cat); if(activeBtn) { activeBtn.classList.remove('bg-white', 'text-black'); activeBtn.classList.add('bg-[#3b82f6]', 'text-white'); }
             searchAndSortCatalog();
         }
@@ -638,32 +623,19 @@
         function searchAndSortCatalog() {
             if (globalCatalogData.length === 0) return;
             let searchText = document.getElementById('searchCatalogInput').value.toLowerCase(); let sortType = document.getElementById('sortCatalogSelect').value;
-            let filteredData = globalCatalogData.filter(item => {
-                let matchText = String(item.name || "").toLowerCase().includes(searchText) || String(item.id || "").toLowerCase().includes(searchText);
-                let matchCat = (activeCategoryFilter === 'ALL') || (item.category === activeCategoryFilter);
-                return matchText && matchCat;
-            });
-            
+            let filteredData = globalCatalogData.filter(item => { let matchText = String(item.name || "").toLowerCase().includes(searchText) || String(item.id || "").toLowerCase().includes(searchText); let matchCat = (activeCategoryFilter === 'ALL') || (item.category === activeCategoryFilter); return matchText && matchCat; });
             filteredData.sort((a, b) => {
                 if (sortType === "name_asc") return String(a.name || "").localeCompare(String(b.name || ""), 'th');
                 if (sortType === "name_desc") return String(b.name || "").localeCompare(String(a.name || ""), 'th');
                 if (sortType === "id_asc") return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: 'base' });
                 if (sortType === "id_desc") return String(b.id || "").localeCompare(String(a.id || ""), undefined, { numeric: true, sensitivity: 'base' });
                 if (sortType === "qty_desc") return parseInt(b.qty || 0) - parseInt(a.qty || 0);
-                if (sortType === "qty_asc") return parseInt(a.qty || 0) - parseInt(b.qty || 0);
-                return 0;
+                if (sortType === "qty_asc") return parseInt(a.qty || 0) - parseInt(b.qty || 0); return 0;
             });
-            
             const cont = document.getElementById('catalogContainer'); 
-            if (filteredData.length === 0) { 
-                cont.innerHTML = '';
-                document.getElementById('noSearchResult').classList.remove('hidden'); 
-            } else {
-                document.getElementById('noSearchResult').classList.add('hidden');
-                let htmlStr = '';
-                filteredData.forEach(item => {
-                    htmlStr += `<div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1"><div><div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center"><img src="${item.picUrl}" class="w-full h-full object-cover"></div><span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span><h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4><p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p></div><div class="mt-5"><p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p><button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button></div></div>`;
-                });
+            if (filteredData.length === 0) { cont.innerHTML = ''; document.getElementById('noSearchResult').classList.remove('hidden'); } else {
+                document.getElementById('noSearchResult').classList.add('hidden'); let htmlStr = '';
+                filteredData.forEach(item => { htmlStr += `<div class="catalog-card card-brutal bg-white p-5 flex flex-col justify-between transition-all hover:-translate-y-1"><div><div class="w-full h-40 rounded-xl border-4 border-black mb-4 overflow-hidden bg-white flex items-center justify-center"><img src="${item.picUrl}" class="w-full h-full object-cover"></div><span class="bg-[#fde047] text-black font-black px-3 py-1 border-2 border-black rounded-lg text-xs tracking-widest">${item.category}</span><h4 class="font-black text-xl mt-3 leading-tight text-gray-900">${item.name}</h4><p class="text-sm font-bold text-gray-500 mt-1">Ref: ${item.id}</p></div><div class="mt-5"><p class="font-black mb-3">สถานะ: <span class="text-[#10b981] bg-[#dcfce7] px-2 py-1 border-2 border-black rounded-md">ว่าง ${item.qty} ชิ้น</span></p><button onclick="requestEquipment('${item.id}', '${item.name}')" class="w-full bg-[#3b82f6] text-white py-3 rounded-xl font-black text-lg btn-brutal">📌 จองเลย!</button></div></div>`; });
                 cont.innerHTML = htmlStr;
             }
         }
@@ -671,25 +643,13 @@
         async function requestEquipment(barcodeId, name) {
             const { value: form } = await Swal.fire({ 
                 title: 'จองอุปกรณ์', 
-                html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p>
-                       <label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label>
-                       <input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;" onkeydown="return false">
-                       <label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label>
-                       <input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold bg-gray-200 cursor-not-allowed" style="width: 85%;" disabled onkeydown="return false">`, 
+                html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p><label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label><input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;" onkeydown="return false"><label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label><input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold bg-gray-200 cursor-not-allowed" style="width: 85%;" disabled onkeydown="return false">`, 
                 focusConfirm: false, 
                 didOpen: () => {
-                    let today = new Date().toISOString().split('T')[0];
-                    let pInput = document.getElementById('swal-pickup');
-                    let rInput = document.getElementById('swal-return');
-                    pInput.min = today;
-
+                    let today = new Date().toISOString().split('T')[0]; let pInput = document.getElementById('swal-pickup'); let rInput = document.getElementById('swal-return'); pInput.min = today;
                     pInput.addEventListener('change', function() {
-                        if(this.value) {
-                            rInput.disabled = false; rInput.classList.remove('bg-gray-200', 'cursor-not-allowed'); rInput.min = this.value; 
-                            if (rInput.value && rInput.value < this.value) rInput.value = this.value; 
-                        } else {
-                            rInput.disabled = true; rInput.classList.add('bg-gray-200', 'cursor-not-allowed'); rInput.value = '';
-                        }
+                        if(this.value) { rInput.disabled = false; rInput.classList.remove('bg-gray-200', 'cursor-not-allowed'); rInput.min = this.value; if (rInput.value && rInput.value < this.value) rInput.value = this.value; } 
+                        else { rInput.disabled = true; rInput.classList.add('bg-gray-200', 'cursor-not-allowed'); rInput.value = ''; }
                     });
                 },
                 preConfirm: () => { 
@@ -703,95 +663,44 @@
             if (form) { 
                 Swal.fire({ title: 'ส่งคำขอ...', didOpen: () => Swal.showLoading() }); 
                 const res = await fetchAPI({ action: "studentRequest", studentId: currentUser.id, barcode: barcodeId, pickupDate: form.pickup, returnDate: form.return }); 
-                if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); loadCatalog(); updateBadges(); } 
-                else Swal.fire('ผิดพลาด', res.message, 'error'); 
+                if(res.success) { Swal.fire('สำเร็จ!', res.message, 'success'); loadCatalog(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); 
             }
         }
 
         async function loadMyBookings() {
-            const tbody = document.getElementById('myBookingsBody'); 
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
-            
+            const tbody = document.getElementById('myBookingsBody'); tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 font-bold">กำลังโหลด...</td></tr>';
             const res = await fetchAPI({ action: "getMyBookings", studentId: currentUser.id });
             if(res.success && res.data.length > 0) {
-                let htmlStr = '';
-                res.data.forEach(item => { 
-                    let statusColor = item.status === "ถูกยืม" ? "text-blue-600" : "text-orange-500"; 
-                    let btnHTML = (item.status === "รอจัดเตรียม" || item.status === "รอผู้ยืมมารับ") ? `<button onclick="cancelBooking('${item.txId}')" class="bg-[#ef4444] text-white px-3 py-2 rounded-lg font-black btn-brutal text-sm">❌ ยกเลิก</button>` : `<span class="bg-gray-200 border-2 border-black px-2 py-1 font-bold rounded-md text-xs">รับของแล้ว</span>`; 
-                    htmlStr += `<tr><td class="text-xs font-bold text-gray-500">${item.txId}</td><td class="font-black text-lg">${item.name}</td><td class="${statusColor} font-black text-lg">${item.status}</td><td class="text-center">${btnHTML}</td></tr>`; 
-                });
-                tbody.innerHTML = htmlStr;
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 font-bold text-gray-400">คุณยังไม่มีรายการจองครับ</td></tr>';
-            }
+                let htmlStr = ''; res.data.forEach(item => { let statusColor = item.status === "ถูกยืม" ? "text-blue-600" : "text-orange-500"; let btnHTML = (item.status === "รอจัดเตรียม" || item.status === "รอผู้ยืมมารับ") ? `<button onclick="cancelBooking('${item.txId}')" class="bg-[#ef4444] text-white px-3 py-2 rounded-lg font-black btn-brutal text-sm">❌ ยกเลิก</button>` : `<span class="bg-gray-200 border-2 border-black px-2 py-1 font-bold rounded-md text-xs">รับของแล้ว</span>`; htmlStr += `<tr><td class="text-xs font-bold text-gray-500">${item.txId}</td><td class="font-black text-lg">${item.name}</td><td class="${statusColor} font-black text-lg">${item.status}</td><td class="text-center">${btnHTML}</td></tr>`; }); tbody.innerHTML = htmlStr;
+            } else tbody.innerHTML = '<tr><td colspan="4" class="text-center py-6 font-bold text-gray-400">คุณยังไม่มีรายการจองครับ</td></tr>';
         }
         
-        async function cancelBooking(txId) { 
-            Swal.fire({ title: 'เอาจริงดิ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่ ยกเลิกเลย!', cancelButtonText: 'เปลี่ยนใจ' }).then(async (r) => { 
-                if (r.isConfirmed) { 
-                    Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() }); 
-                    const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id }); 
-                    if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); updateBadges(); } 
-                    else Swal.fire('ผิดพลาด', res.message, 'error'); 
-                } 
-            }); 
-        }
+        async function cancelBooking(txId) { Swal.fire({ title: 'เอาจริงดิ?', icon: 'warning', showCancelButton: true, confirmButtonText: 'ใช่ ยกเลิกเลย!', cancelButtonText: 'เปลี่ยนใจ' }).then(async (r) => { if (r.isConfirmed) { Swal.fire({ title: 'กำลังยกเลิก...', didOpen: () => Swal.showLoading() }); const res = await fetchAPI({ action: "cancelBooking", txId: txId, studentId: currentUser.id }); if(res.success) { Swal.fire('สำเร็จ', res.message, 'success'); loadMyBookings(); updateBadges(); } else Swal.fire('ผิดพลาด', res.message, 'error'); } }); }
 
         async function loadTasks() {
-            const tbody = document.getElementById('tasksBody'); 
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 font-bold text-xl">กำลังดึงคิวงาน...</td></tr>';
-            
+            const tbody = document.getElementById('tasksBody'); tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 font-bold text-xl">กำลังดึงคิวงาน...</td></tr>';
             const res = await fetchAPI({ action: "getTasks", role: currentUser.role, studentId: currentUser.id });
-            
             if(res.success && res.data.length > 0) {
-                let htmlStr = ''; 
-                res.data.forEach(task => {
+                let htmlStr = ''; res.data.forEach(task => {
                     let actionBtn = ""; let targetStatus = ""; let color = "";
                     if(task.status === "รอจัดเตรียม" && currentUser.role === "Staff") { actionBtn = "📦 จัดเตรียม"; targetStatus = "รอผู้ยืมมารับ"; color = "bg-[#eab308]"; }
                     else if(task.status === "รอผู้ยืมมารับ") { if (task.studentId === currentUser.id) { actionBtn = "🟢 รับของ"; targetStatus = "ถูกยืม"; color = "bg-[#3b82f6]"; } else if (currentUser.role === "Staff") { actionBtn = "📤 จ่ายของ"; targetStatus = "ถูกยืม"; color = "bg-[#0ea5e9]"; } }
                     else if(task.status === "ถูกยืม") { if (task.studentId === currentUser.id) { actionBtn = "🟠 คืนของ"; targetStatus = "รอตรวจสอบ"; color = "bg-[#f97316]"; } else if (currentUser.role === "Staff") { actionBtn = "📥 รับคืน"; targetStatus = "รอตรวจสอบ"; color = "bg-[#ea580c]"; } }
                     else if(task.status === "รอตรวจสอบ" && currentUser.role === "Staff") { actionBtn = "✅ ตรวจรับ"; targetStatus = "คืนแล้ว"; color = "bg-[#22c55e]"; }
-                    
                     if(actionBtn !== "") { 
                         let dataStr = encodeURIComponent(JSON.stringify(task)); let shortTx = task.txId.substring(0, 8) + '...';
-                        let pDate = task.pickupDate ? new Date(task.pickupDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-';
-                        let rDate = task.returnDate ? new Date(task.returnDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-';
-                        let dateStr = `<span class="text-blue-600">${pDate}</span> - <span class="text-red-500">${rDate}</span>`;
-                        
-                        let statusColor = "text-gray-700";
-                        if (task.status === "รอตรวจสอบ") statusColor = "text-orange-500";
-                        if (task.status === "ถูกยืม") statusColor = "text-blue-600";
-                        if (task.status === "รอผู้ยืมมารับ") statusColor = "text-green-600";
-
-                        htmlStr += `
-                            <tr class="hover:bg-[#fdf2f8] transition">
-                                <td class="text-xs font-bold text-gray-500 whitespace-nowrap">${shortTx}</td>
-                                <td class="font-black text-purple-700 whitespace-nowrap">${task.studentName} <span class="block text-xs font-bold text-gray-400">(${task.studentId})</span></td>
-                                <td class="font-black text-lg whitespace-normal break-words min-w-[150px] leading-tight py-3">${task.name}</td>
-                                <td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center whitespace-nowrap">${dateStr}</td>
-                                <td class="font-black ${statusColor} whitespace-nowrap">${task.status}</td>
-                                <td class="text-center whitespace-nowrap">
-                                    <button onclick="openScannerTask('${dataStr}', '${targetStatus}')" class="${color} text-white px-4 py-2 rounded-lg font-black btn-brutal text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${actionBtn}</button>
-                                </td>
-                            </tr>
-                        `;
+                        let pDate = task.pickupDate ? new Date(task.pickupDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-'; let rDate = task.returnDate ? new Date(task.returnDate).toLocaleDateString('th-TH', {day:'2-digit', month:'short', year:'2-digit'}) : '-'; let dateStr = `<span class="text-blue-600">${pDate}</span> - <span class="text-red-500">${rDate}</span>`;
+                        let statusColor = "text-gray-700"; if (task.status === "รอตรวจสอบ") statusColor = "text-orange-500"; if (task.status === "ถูกยืม") statusColor = "text-blue-600"; if (task.status === "รอผู้ยืมมารับ") statusColor = "text-green-600";
+                        htmlStr += `<tr class="hover:bg-[#fdf2f8] transition"><td class="text-xs font-bold text-gray-500 whitespace-nowrap">${shortTx}</td><td class="font-black text-purple-700 whitespace-nowrap">${task.studentName} <span class="block text-xs font-bold text-gray-400">(${task.studentId})</span></td><td class="font-black text-lg whitespace-normal break-words min-w-[150px] leading-tight py-3">${task.name}</td><td class="text-sm font-bold bg-gray-50 border-x-2 border-black text-center whitespace-nowrap">${dateStr}</td><td class="font-black ${statusColor} whitespace-nowrap">${task.status}</td><td class="text-center whitespace-nowrap"><button onclick="openScannerTask('${dataStr}', '${targetStatus}')" class="${color} text-white px-4 py-2 rounded-lg font-black btn-brutal text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${actionBtn}</button></td></tr>`;
                     }
                 });
-                
-                if(htmlStr === '') tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>';
-                else tbody.innerHTML = htmlStr;
-            } else {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>';
-            }
+                if(htmlStr === '') tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>'; else tbody.innerHTML = htmlStr;
+            } else tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10 font-black text-2xl text-gray-500">🎉 งานหมดแล้วจ้า ว่าง!</td></tr>';
         }
 
         function openScannerTask(dataStr, toStatus) {
-            let task = JSON.parse(decodeURIComponent(dataStr)); let subItemsStr = String(task.subItems || "").trim();
-            let requiredItems = (subItemsStr !== "" && subItemsStr !== "undefined") ? subItemsStr.split(',').map(s => s.trim().toUpperCase()) : [String(task.barcode || "").toUpperCase()]; 
-            
-            let checklistData = requiredItems.map((item, idx) => ({ id: idx, code: item, scanned: false }));
-            currentScanTask = { txId: task.txId, mainBarcode: task.barcode, checklist: checklistData, toStatus: toStatus };
-
+            let task = JSON.parse(decodeURIComponent(dataStr)); let subItemsStr = String(task.subItems || "").trim(); let requiredItems = (subItemsStr !== "" && subItemsStr !== "undefined") ? subItemsStr.split(',').map(s => s.trim().toUpperCase()) : [String(task.barcode || "").toUpperCase()]; 
+            let checklistData = requiredItems.map((item, idx) => ({ id: idx, code: item, scanned: false })); currentScanTask = { txId: task.txId, mainBarcode: task.barcode, checklist: checklistData, toStatus: toStatus };
             let html = `<div class="text-left mb-4"><p class="font-black text-xl text-blue-600">${task.name}</p><p class="mt-2 font-bold text-gray-700">บังคับสแกนบาร์โค้ดดังนี้ให้ครบ:</p><div id="scan-checklist" class="mt-2 space-y-2 border-4 border-black rounded-xl p-3 bg-gray-100 max-h-48 overflow-y-auto">${currentScanTask.checklist.map(item => `<div id="check-${item.id}" class="font-bold text-gray-400 bg-white border-2 border-black rounded p-2 flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">⏳ รอสแกน: ${item.code}</div>`).join('')}</div></div><input type="text" id="liveScannerInput" class="w-full px-4 py-4 border-4 border-black rounded-xl text-center font-black text-2xl focus:bg-yellow-100 outline-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" placeholder="🔫 ยิงบาร์โค้ดที่นี่..." autocomplete="off"><p id="scanFeedback" class="font-black text-red-500 mt-3 text-lg h-6"></p>`;
             Swal.fire({
                 title: 'สแกนเช็คลิสต์', html: html, showConfirmButton: false, showCancelButton: true, cancelButtonText: 'ยกเลิก', customClass: { popup: 'border-4 border-black rounded-2xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]' },
@@ -823,57 +732,33 @@
             if (globalEditEquipData.length === 0) return;
             let searchText = document.getElementById('searchEditEquipInput').value.toLowerCase(); let sortType = document.getElementById('sortEditEquipSelect').value;
             let filteredData = globalEditEquipData.filter(item => String(item.name || "").toLowerCase().includes(searchText) || String(item.id || "").toLowerCase().includes(searchText));
-            
             filteredData.sort((a, b) => {
-                if (sortType === "name_asc") return String(a.name || "").localeCompare(String(b.name || ""), 'th'); 
-                if (sortType === "name_desc") return String(b.name || "").localeCompare(String(a.name || ""), 'th');
-                if (sortType === "id_asc") return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: 'base' }); 
-                if (sortType === "id_desc") return String(b.id || "").localeCompare(String(a.id || ""), undefined, { numeric: true, sensitivity: 'base' }); 
-                return 0;
+                if (sortType === "name_asc") return String(a.name || "").localeCompare(String(b.name || ""), 'th'); if (sortType === "name_desc") return String(b.name || "").localeCompare(String(a.name || ""), 'th');
+                if (sortType === "id_asc") return String(a.id || "").localeCompare(String(b.id || ""), undefined, { numeric: true, sensitivity: 'base' }); if (sortType === "id_desc") return String(b.id || "").localeCompare(String(a.id || ""), undefined, { numeric: true, sensitivity: 'base' }); return 0;
             });
-            
             const list = document.getElementById('editEquipList'); 
             if (filteredData.length === 0) { list.innerHTML = '<li class="p-3 text-center font-bold text-red-500">❌ ไม่พบอุปกรณ์ที่ค้นหา</li>'; } 
-            else {
-                let htmlStr = '';
-                filteredData.forEach(item => { let dataStr = encodeURIComponent(JSON.stringify(item)); htmlStr += `<li class="p-3 flex justify-between items-center border-2 border-black rounded-lg mb-2 bg-white hover:bg-yellow-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition" onclick="editEquip('${dataStr}')"><div><p class="font-black text-blue-700 text-lg">${item.id}</p><p class="font-bold text-gray-700 leading-tight">${item.name}</p></div><span class="bg-black text-white font-bold px-3 py-1 rounded border-2 border-black">✏️</span></li>`; });
-                list.innerHTML = htmlStr;
-            }
+            else { let htmlStr = ''; filteredData.forEach(item => { let dataStr = encodeURIComponent(JSON.stringify(item)); htmlStr += `<li class="p-3 flex justify-between items-center border-2 border-black rounded-lg mb-2 bg-white hover:bg-yellow-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer transition" onclick="editEquip('${dataStr}')"><div><p class="font-black text-blue-700 text-lg">${item.id}</p><p class="font-bold text-gray-700 leading-tight">${item.name}</p></div><span class="bg-black text-white font-bold px-3 py-1 rounded border-2 border-black">✏️</span></li>`; }); list.innerHTML = htmlStr; }
         }
 
         function renderSelectedSubItems() {
-            const container = document.getElementById('selectedSubItemsContainer'); 
-            let htmlStr = '';
-            selectedSubItems.forEach((id, index) => {
-                let itemData = globalEditEquipData.find(e => e.id === id); let displayName = itemData ? itemData.name : id;
-                htmlStr += `<span class="bg-[#fde047] border-2 border-black px-3 py-1 rounded-lg font-bold text-sm flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${displayName} <button type="button" onclick="removeSubItem(${index})" class="text-red-600 hover:text-red-800 font-black px-1 text-lg">×</button></span>`;
-            });
-            container.innerHTML = htmlStr;
-            document.getElementById('newSubItems').value = selectedSubItems.join(',');
+            const container = document.getElementById('selectedSubItemsContainer'); let htmlStr = '';
+            selectedSubItems.forEach((id, index) => { let itemData = globalEditEquipData.find(e => e.id === id); let displayName = itemData ? itemData.name : id; htmlStr += `<span class="bg-[#fde047] border-2 border-black px-3 py-1 rounded-lg font-bold text-sm flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">${displayName} <button type="button" onclick="removeSubItem(${index})" class="text-red-600 hover:text-red-800 font-black px-1 text-lg">×</button></span>`; });
+            container.innerHTML = htmlStr; document.getElementById('newSubItems').value = selectedSubItems.join(',');
         }
         function removeSubItem(index) { selectedSubItems.splice(index, 1); renderSelectedSubItems(); }
         
         function handleSubItemSearch() {
             const input = document.getElementById('searchSubItemInput').value.toLowerCase(); const dropdown = document.getElementById('subItemDropdown');
-            let filtered = globalEditEquipData; 
-            if (input) filtered = globalEditEquipData.filter(item => String(item.name || "").toLowerCase().includes(input) || String(item.id || "").toLowerCase().includes(input)); 
-            
+            let filtered = globalEditEquipData; if (input) filtered = globalEditEquipData.filter(item => String(item.name || "").toLowerCase().includes(input) || String(item.id || "").toLowerCase().includes(input)); 
             if (filtered.length === 0) { dropdown.innerHTML = '<li class="p-3 text-center font-bold text-red-500">❌ ไม่พบอุปกรณ์นี้ในคลัง</li>'; } 
-            else {
-                let htmlStr = '';
-                filtered.slice(0, 30).forEach(item => { htmlStr += `<li class="p-3 border-b-2 border-black hover:bg-[#bae6fd] cursor-pointer flex justify-between items-center transition" onclick="addSubItem('${item.id}')"><span class="font-bold text-gray-800 text-sm">${item.name}</span><span class="font-black text-blue-600 text-xs bg-white px-2 py-1 border-2 border-black rounded">${item.id}</span></li>`; });
-                dropdown.innerHTML = htmlStr;
-            } 
+            else { let htmlStr = ''; filtered.slice(0, 30).forEach(item => { htmlStr += `<li class="p-3 border-b-2 border-black hover:bg-[#bae6fd] cursor-pointer flex justify-between items-center transition" onclick="addSubItem('${item.id}')"><span class="font-bold text-gray-800 text-sm">${item.name}</span><span class="font-black text-blue-600 text-xs bg-white px-2 py-1 border-2 border-black rounded">${item.id}</span></li>`; }); dropdown.innerHTML = htmlStr; } 
             dropdown.classList.remove('hidden');
         }
         function addSubItem(id) { selectedSubItems.push(id); renderSelectedSubItems(); document.getElementById('searchSubItemInput').value = ''; document.getElementById('subItemDropdown').classList.add('hidden'); }
         document.addEventListener('click', function(e) { const s = document.getElementById('searchSubItemInput'); const d = document.getElementById('subItemDropdown'); if (s && d && !s.contains(e.target) && !d.contains(e.target)) d.classList.add('hidden'); });
 
-        function toggleSubItems() { 
-            let cat = document.getElementById('newEquipCategory').value; 
-            if(cat === "ชุดเซ็ต") { document.getElementById('subItemsDiv').classList.remove('hidden'); renderSelectedSubItems(); } 
-            else { document.getElementById('subItemsDiv').classList.add('hidden'); selectedSubItems = []; document.getElementById('newSubItems').value = ""; renderSelectedSubItems(); } 
-        }
+        function toggleSubItems() { let cat = document.getElementById('newEquipCategory').value; if(cat === "ชุดเซ็ต") { document.getElementById('subItemsDiv').classList.remove('hidden'); renderSelectedSubItems(); } else { document.getElementById('subItemsDiv').classList.add('hidden'); selectedSubItems = []; document.getElementById('newSubItems').value = ""; renderSelectedSubItems(); } }
 
         function editEquip(dataStr) {
             let item = JSON.parse(decodeURIComponent(dataStr)); document.getElementById('isEditMode').value = "true"; document.getElementById('newEquipId').value = item.id; document.getElementById('newEquipId').readOnly = true; document.getElementById('newEquipId').classList.add('bg-gray-200'); document.getElementById('newEquipName').value = item.name; document.getElementById('newEquipCategory').value = item.category; document.getElementById('newEquipQty').value = item.totalQty; document.getElementById('equipPreview').src = item.picUrl || "https://placehold.co/200x200?text=IMAGE"; base64EquipString = ""; 
@@ -882,8 +767,7 @@
         }
 
         function resetEquipForm() {
-            document.getElementById('isEditMode').value = "false"; document.getElementById('newEquipId').value = ""; document.getElementById('newEquipId').readOnly = false; document.getElementById('newEquipId').classList.remove('bg-gray-200'); document.getElementById('newEquipName').value = ""; document.getElementById('newEquipQty').value = "1"; document.getElementById('newEquipCategory').value = "ทั่วไป"; document.getElementById('equipPreview').src = "https://placehold.co/200x200?text=IMAGE"; base64EquipString = "";
-            selectedSubItems = []; renderSelectedSubItems(); toggleSubItems();
+            document.getElementById('isEditMode').value = "false"; document.getElementById('newEquipId').value = ""; document.getElementById('newEquipId').readOnly = false; document.getElementById('newEquipId').classList.remove('bg-gray-200'); document.getElementById('newEquipName').value = ""; document.getElementById('newEquipQty').value = "1"; document.getElementById('newEquipCategory').value = "ทั่วไป"; document.getElementById('equipPreview').src = "https://placehold.co/200x200?text=IMAGE"; base64EquipString = ""; selectedSubItems = []; renderSelectedSubItems(); toggleSubItems();
             let btn = document.getElementById('btnSaveEquip'); btn.innerText = "💾 บันทึกข้อมูล"; btn.classList.replace('bg-[#3b82f6]', 'bg-[#10b981]'); document.getElementById('btnCancelEdit').classList.add('hidden'); generateBarcodeLive();
         }
 
@@ -908,13 +792,20 @@
             if(res.success && res.data.length > 0) { let oldPc = document.getElementById('batch-print-area'); if(oldPc) oldPc.remove(); let pc = document.createElement('div'); pc.id = 'batch-print-area'; pc.style.display = 'none'; document.body.appendChild(pc); res.data.forEach((item, i) => { pc.innerHTML += `<div class="barcode-item"><svg id="batch-barcode-${i}"></svg><p>${item.name}</p></div>`; }); res.data.forEach((item, i) => { JsBarcode(`#batch-barcode-${i}`, item.id, { format: "CODE128", width: 1.5, height: 40, displayValue: true, fontSize: 14 }); }); Swal.close(); document.body.classList.add('batch-print-mode'); pc.style.display = ''; setTimeout(() => { window.print(); document.body.classList.remove('batch-print-mode'); pc.remove(); }, 500); } else Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลในคลัง', 'warning');
         }
 
+        function downloadExcelTemplate() {
+            const templateData = [
+                ["รหัสผู้ใช้", "ชื่อ-นามสกุล", "รหัสผ่าน", "สิทธิ์ (Student หรือ Staff)"],
+                ["660001", "นายสมชาย ใจดี", "1234", "Student"],
+                ["staff-01", "อ.สมศรี เรียนเก่ง", "1234", "Staff"]
+            ];
+            const worksheet = XLSX.utils.aoa_to_sheet(templateData); worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }];
+            const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "UserTemplate"); XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มรายชื่อผู้ใช้งาน.xlsx");
+        }
+
         async function importUsersFromExcel() {
             if (currentUser.role !== 'Staff') return Swal.fire('ปฏิเสธการเข้าถึง', 'ฟังก์ชันนี้เฉพาะเจ้าหน้าที่ครับ', 'error');
-            const fileInput = document.getElementById('excelFileInput');
-            if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
+            const fileInput = document.getElementById('excelFileInput'); if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
+            const file = fileInput.files[0]; const reader = new FileReader();
 
             reader.onload = async function(e) {
                 Swal.fire({ title: 'กำลังนำเข้า...', html: 'กรุณารอสักครู่ เครื่องกำลังแกะกล่อง Excel', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -922,91 +813,22 @@
                     const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
                     
-                    let count = 0;
-                    let batch = db.batch();
-
+                    let count = 0; let batch = db.batch(); 
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (cols && cols.length >= 4 && cols[0]) {
                             let id = String(cols[0]).trim(); let name = String(cols[1] || "").trim(); let password = String(cols[2] || "").trim(); let role = String(cols[3] || "Student").trim(); 
                             if (id !== "") { 
                                 let docRef = db.collection("users").doc(id);
-
-                                batch.set(docRef, { name: name, password: password, role: role }, { merge: true }); 
-                                count++; 
+                                batch.set(docRef, { name: name, password: password, role: role }, { merge: true }); count++; 
+                                if (count % 490 === 0) { await batch.commit(); batch = db.batch(); }
                             }
                         }
                     }
-                    if(count > 0) await batch.commit();
-
-                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกจากไฟล์ Excel จำนวน ${count} คน เรียบร้อยครับ!`, 'success');
-                    fileInput.value = "";
+                    if(count % 490 !== 0 && count > 0) await batch.commit();
+                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มสมาชิกจากไฟล์ Excel จำนวน ${count} คน เรียบร้อยครับ!`, 'success'); fileInput.value = "";
                 } catch (error) { console.error(error); Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error'); }
-            };
-            reader.readAsArrayBuffer(file); 
-        }
-
-        const SESSION_TIMEOUT_MS = 1 * 60 * 1000;
-        let lastInteractionTime = Date.now();
-
-        function saveSession(userData) {
-            localStorage.setItem('nursingLabSession', JSON.stringify({ user: userData, timestamp: Date.now() }));
-        }
-
-        function checkSession() {
-            const sessionStr = localStorage.getItem('nursingLabSession');
-            if (sessionStr) {
-                const sessionObj = JSON.parse(sessionStr);
-                if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) logout(true);
-                else {
-                    currentUser = sessionObj.user;
-                    document.getElementById('displayUserName').innerText = currentUser.name;
-                    document.getElementById('displayUserRole').innerText = currentUser.role;
-                    document.getElementById('displayUserPic').src = currentUser.picUrl || "https://placehold.co/100x100";
-                    document.getElementById('loginSection').classList.add('hidden-section');
-                    document.getElementById('mainSection').classList.remove('hidden-section');
-                    buildMenu(); showTab('dashboardTab'); updateBadges();
-                }
-            }
-        }
-
-        function resetSessionTimer() {
-            const now = Date.now();
-            if (now - lastInteractionTime > 2000) { 
-                lastInteractionTime = now;
-                const sessionStr = localStorage.getItem('nursingLabSession');
-                if (sessionStr) {
-                    const sessionObj = JSON.parse(sessionStr);
-                    sessionObj.timestamp = now;
-                    localStorage.setItem('nursingLabSession', JSON.stringify(sessionObj));
-                }
-            }
-        }
-        document.addEventListener('mousemove', resetSessionTimer);
-        document.addEventListener('click', resetSessionTimer);
-        document.addEventListener('keypress', resetSessionTimer);
-
-        setInterval(() => {
-            const sessionStr = localStorage.getItem('nursingLabSession');
-            if (sessionStr) {
-                const sessionObj = JSON.parse(sessionStr);
-                if (Date.now() - sessionObj.timestamp > SESSION_TIMEOUT_MS) logout(true);
-            }
-        }, 5000);
-
-        window.onload = checkSession;
-        
-        function downloadExcelTemplate() {
-            const templateData = [
-                ["รหัสผู้ใช้", "ชื่อ-นามสกุล", "รหัสผ่าน", "สิทธิ์ (Student หรือ Staff)"],
-                ["660001", "นายสมชาย ใจดี", "1234", "Student"],
-                ["staff-01", "อ.สมศรี เรียนเก่ง", "1234", "Staff"]
-            ];
-            const worksheet = XLSX.utils.aoa_to_sheet(templateData);
-            worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 25 }];
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "UserTemplate");
-            XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มรายชื่อผู้ใช้งาน.xlsx");
+            }; reader.readAsArrayBuffer(file); 
         }
 
         function downloadEquipTemplate() {
@@ -1016,19 +838,13 @@
                 ["SET-01", "ชุดทำแผล (Dressing Set)", "ชุดเซ็ต", "10", "EQ-002, EQ-003", ""],
                 ["EQ-002", "กรรไกร", "ทั่วไป", "20", "", ""]
             ];
-            const worksheet = XLSX.utils.aoa_to_sheet(templateData);
-            worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 40 }];
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "EquipTemplate");
-            XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มอุปกรณ์(พร้อมรูปลิงก์).xlsx");
+            const worksheet = XLSX.utils.aoa_to_sheet(templateData); worksheet['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 40 }];
+            const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "EquipTemplate"); XLSX.writeFile(workbook, "แบบฟอร์มเพิ่มอุปกรณ์(พร้อมรูปลิงก์).xlsx");
         }
 
         function importEquipFromExcel() {
-            const fileInput = document.getElementById('excelEquipInput');
-            if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
-            
-            const file = fileInput.files[0];
-            const reader = new FileReader();
+            const fileInput = document.getElementById('excelEquipInput'); if (fileInput.files.length === 0) return Swal.fire('แจ้งเตือน', 'กรุณาเลือกไฟล์ Excel ก่อนครับ', 'warning');
+            const file = fileInput.files[0]; const reader = new FileReader();
 
             reader.onload = async function(e) {
                 Swal.fire({ title: 'กำลังนำเข้าคลัง...', html: 'กรุณารอสักครู่ เครื่องกำลังแกะกล่อง Excel', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -1036,60 +852,30 @@
                     const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
                     const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
                     
-                    const snap = await db.collection("equipments").get();
-                    const existingMap = new Map();
-                    snap.forEach(doc => existingMap.set(doc.id, doc.data()));
-
-                    let count = 0;
-                    let batch = db.batch();
+                    const snap = await db.collection("equipments").get(); const existingMap = new Map(); snap.forEach(doc => existingMap.set(doc.id, doc.data()));
+                    let count = 0; let batch = db.batch();
 
                     for (let i = 1; i < rows.length; i++) {
                         const cols = rows[i];
                         if (cols && cols.length >= 4 && cols[0]) {
-                            let id = String(cols[0]).trim(); 
-                            let name = String(cols[1] || "").trim(); 
-                            let cat = String(cols[2] || "ทั่วไป").trim(); 
-                            let qty = parseInt(cols[3]) || 1; 
-                            let subItems = String(cols[4] || "").trim();
-                            let newPicUrl = String(cols[5] || "").trim();
+                            let id = String(cols[0]).trim(); let name = String(cols[1] || "").trim(); let cat = String(cols[2] || "ทั่วไป").trim(); let qty = parseInt(cols[3]) || 1; let subItems = String(cols[4] || "").trim(); let newPicUrl = String(cols[5] || "").trim();
 
                             if (id !== "" && name !== "") { 
-                                let existing = existingMap.get(id);
-                                let finalPicUrl = "https://placehold.co/200x200?text=IMAGE";
-                                let existingBorrows = 0;
-                                
-                                if (existing) {
-                                    existingBorrows = existing.borrows || 0;
-                                    finalPicUrl = newPicUrl !== "" ? newPicUrl : (existing.picUrl || finalPicUrl);
-                                } else {
-                                    if (newPicUrl !== "") finalPicUrl = newPicUrl;
-                                }
+                                let existing = existingMap.get(id); let finalPicUrl = "https://placehold.co/200x200?text=IMAGE"; let existingBorrows = 0;
+                                if (existing) { existingBorrows = existing.borrows || 0; finalPicUrl = newPicUrl !== "" ? newPicUrl : (existing.picUrl || finalPicUrl); } else { if (newPicUrl !== "") finalPicUrl = newPicUrl; }
 
                                 let docRef = db.collection("equipments").doc(id);
-                                batch.set(docRef, { 
-                                    id: id, name: name, category: cat, qty: qty, totalQty: qty, 
-                                    subItems: subItems, borrows: existingBorrows, picUrl: finalPicUrl
-                                }, { merge: true }); 
-                                
+                                batch.set(docRef, { id: id, name: name, category: cat, qty: qty, totalQty: qty, subItems: subItems, borrows: existingBorrows, picUrl: finalPicUrl }, { merge: true }); 
                                 count++; 
+                                if (count % 490 === 0) { await batch.commit(); batch = db.batch(); }
                             }
                         }
                     }
-                    
-                    if(count > 0) await batch.commit();
+                    if(count % 490 !== 0 && count > 0) await batch.commit();
 
-                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มอุปกรณ์จาก Excel จำนวน ${count} รายการ เรียบร้อยครับ!`, 'success')
-                    .then(() => { 
-                        loadEditEquipList(); 
-                        if(document.getElementById('catalogTab').classList.contains('hidden-section') === false) loadCatalog(); 
-                    });
-                    fileInput.value = "";
-                } catch (error) { 
-                    console.error(error); 
-                    Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error'); 
-                }
-            };
-            reader.readAsArrayBuffer(file); 
+                    Swal.fire('สำเร็จยอดเยี่ยม!', `เพิ่มอุปกรณ์จาก Excel จำนวน ${count} รายการ เรียบร้อยครับ!`, 'success').then(() => { loadEditEquipList(); if(document.getElementById('catalogTab').classList.contains('hidden-section') === false) loadCatalog(); }); fileInput.value = "";
+                } catch (error) { console.error(error); Swal.fire('ผิดพลาด', 'ไม่สามารถอ่านไฟล์ Excel ได้ครับ: ' + error.message, 'error'); }
+            }; reader.readAsArrayBuffer(file); 
         }
     </script>
 </body>
