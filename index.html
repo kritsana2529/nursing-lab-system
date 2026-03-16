@@ -639,9 +639,10 @@
                 title: 'จองอุปกรณ์', 
                 html: `<p class="text-lg font-black text-blue-600 mb-4 border-b-2 border-black pb-2">${name}</p>
                        <label class="block text-left font-bold mt-2">📅 วันที่รับของ:</label>
-                       <input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;">
+                       <input type="date" id="swal-pickup" class="swal2-input border-4 border-black font-bold" style="width: 85%;" onkeydown="return false">
+                       
                        <label class="block text-left font-bold mt-4">📅 วันที่คืนของ:</label>
-                       <input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold" style="width: 85%;">`, 
+                       <input type="date" id="swal-return" class="swal2-input border-4 border-black font-bold bg-gray-200 cursor-not-allowed" style="width: 85%;" disabled onkeydown="return false">`, 
                 focusConfirm: false, 
                 didOpen: () => {
                     let today = new Date().toISOString().split('T')[0];
@@ -649,13 +650,20 @@
                     let rInput = document.getElementById('swal-return');
                     
                     pInput.min = today;
-                    rInput.min = today;
 
                     pInput.addEventListener('change', function() {
-                        rInput.min = this.value;
-                        
-                        if (rInput.value && rInput.value < this.value) {
-                            rInput.value = this.value; 
+                        if(this.value) {
+                            rInput.disabled = false;
+                            rInput.classList.remove('bg-gray-200', 'cursor-not-allowed');
+                            rInput.min = this.value;
+                            
+                            if (rInput.value && rInput.value < this.value) {
+                                rInput.value = this.value; 
+                            }
+                        } else {
+                            rInput.disabled = true;
+                            rInput.classList.add('bg-gray-200', 'cursor-not-allowed');
+                            rInput.value = '';
                         }
                     });
                 },
@@ -665,11 +673,11 @@
                     
                     if(!p || !r) {
                         Swal.showValidationMessage('กรุณาระบุวันที่ให้ครบถ้วนครับ'); 
-                        return false;
+                        return false; 
                     }
                     if(new Date(r) < new Date(p)) {
                         Swal.showValidationMessage('❌ วันที่คืนของ ต้องไม่ย้อนหลังกว่าวันที่รับของครับ'); 
-                        return false;
+                        return false; 
                     }
                     
                     return { pickup: p, return: r }; 
